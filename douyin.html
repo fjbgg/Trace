@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>抖音</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#0a0a0a;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue",sans-serif}
+body{display:flex;align-items:center;justify-content:center}
+
+/* 手机外框 */
+.phone{position:relative;width:390px;height:844px;background:#000;border-radius:48px;box-shadow:0 40px 100px rgba(0,0,0,.6),0 0 0 11px #1a1a1a,0 0 0 13px #333;overflow:hidden}
+.notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:28px;background:#000;border-bottom-left-radius:18px;border-bottom-right-radius:18px;z-index:1000}
+.statusbar{position:absolute;top:0;left:0;right:0;height:44px;display:flex;justify-content:space-between;align-items:center;padding:0 28px;color:#fff;font-size:15px;font-weight:600;z-index:999;pointer-events:none}
+
+/* 页面 */
+.page{position:absolute;inset:0;display:none;flex-direction:column;background:#000;color:#fff;overflow:hidden}
+.page.active{display:flex}
+.noscroll::-webkit-scrollbar{display:none}
+.noscroll{scrollbar-width:none}
+
+/* ===== 底部导航 ===== */
+.tabbar{height:60px;background:#000;display:flex;align-items:center;justify-content:space-around;border-top:1px solid rgba(255,255,255,.05);flex-shrink:0}
+.tab{display:flex;flex-direction:column;align-items:center;gap:3px;color:#888;cursor:pointer;font-size:10px;font-weight:500;transition:color .15s}
+.tab.active{color:#fff}
+.tab svg{width:24px;height:24px}
+.tab-create{width:48px;height:32px;border-radius:9px;background:linear-gradient(90deg,#25f4ee 0%,#25f4ee 50%,#fff 50%,#fff 55%,#fe2c55 55%,#fe2c55 100%);position:relative;cursor:pointer;margin-top:6px}
+.tab-create::before{content:'';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:20px;height:20px;background:#000;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z'/%3E%3C/svg%3E") center/contain no-repeat;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z'/%3E%3C/svg%3E") center/contain no-repeat}
+
+/* ===== 首页视频流 ===== */
+.feed{flex:1;overflow-y:scroll;scroll-snap-type:y mandatory;scroll-behavior:smooth}
+.feed::-webkit-scrollbar{display:none}
+.vcard{height:100%;scroll-snap-align:start;position:relative;display:flex;align-items:flex-end}
+.vbg{position:absolute;inset:0;background-size:cover;background-position:center}
+.vgrad{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.3) 0%,transparent 20%,transparent 55%,rgba(0,0,0,.6) 100%)}
+
+/* 顶部 */
+.toptabs{position:absolute;top:0;left:0;right:0;height:44px;display:flex;align-items:flex-end;justify-content:center;gap:20px;padding-bottom:6px;z-index:20}
+.ttab{color:rgba(255,255,255,.6);font-size:17px;font-weight:500;cursor:pointer;position:relative}
+.ttab.active{color:#fff;font-weight:700}
+.ttab.active::after{content:'';position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:14px;height:3px;background:#fff;border-radius:2px}
+
+/* 右侧操作栏 */
+.side{position:absolute;right:10px;bottom:100px;display:flex;flex-direction:column;align-items:center;gap:20px;z-index:10}
+.sa{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+.sa:active{transform:scale(.85)}
+.sa svg{width:36px;height:36px;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4))}
+.sa .num{font-size:12px;font-weight:500;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.avatar-btn{position:relative;margin-bottom:4px}
+.avatar-btn .av{width:46px;height:46px;border-radius:50%;border:2px solid #fff;overflow:hidden}
+.avatar-btn .plus{position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);width:20px;height:20px;background:#fe2c55;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:300;border:2px solid #000}
+.disc{width:46px;height:46px;border-radius:50%;background:#000;border:3px solid #1a1a1a;overflow:hidden;animation:spin 6s linear infinite;margin-top:4px}
+.disc .art{width:100%;height:100%;border-radius:50%}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* 底部信息 */
+.vinfo{position:relative;z-index:10;padding:0 16px 18px;max-width:78%}
+.vinfo .author{font-size:17px;font-weight:700;margin-bottom:6px;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+.vinfo .desc{font-size:15px;line-height:1.4;margin-bottom:8px;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+.vinfo .music{display:flex;align-items:center;gap:6px;font-size:13px;white-space:nowrap;overflow:hidden}
+.vinfo .music .marquee{animation:marquee 12s linear infinite}
+@keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+/* 搜索图标 */
+.search-ic{position:absolute;top:12px;right:16px;z-index:20;cursor:pointer;color:#fff}
+.search-ic svg{width:26px;height:26px}
+
+/* ===== 评论抽屉 ===== */
+.sheet{position:absolute;bottom:0;left:0;right:0;max-height:68%;background:#1c1c1e;border-radius:16px 16px 0 0;transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);z-index:500;display:flex;flex-direction:column}
+.sheet.open{transform:translateY(0)}
+.handle{width:36px;height:4px;background:#444;border-radius:2px;margin:8px auto;flex-shrink:0}
+.cmt-header{text-align:center;font-size:14px;font-weight:600;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0}
+.cmt-list{flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:16px}
+.cmt-list::-webkit-scrollbar{display:none}
+.cmt{display:flex;gap:10px}
+.cmt .cav{width:36px;height:36px;border-radius:50%;flex-shrink:0}
+.cmt .cbody{flex:1}
+.cmt .cname{font-size:12px;color:#888}
+.cmt .ctext{font-size:14px;margin-top:2px;line-height:1.4}
+.cmt .cmeta{display:flex;gap:16px;margin-top:4px;font-size:11px;color:#666}
+.cmt .clike{cursor:pointer}
+.cmt-input{padding:10px 16px;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.cmt-input input{flex:1;background:#2c2c2e;border:none;border-radius:20px;padding:9px 16px;color:#fff;font-size:14px;outline:none}
+.cmt-input input::placeholder{color:#666}
+.cmt-input button{background:#fe2c55;color:#fff;border:none;border-radius:20px;padding:9px 18px;font-size:14px;font-weight:600;cursor:pointer}
+
+/* ===== 朋友页 ===== */
+.f-top{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0}
+.f-top .title{font-size:18px;font-weight:700}
+.f-list{flex:1;overflow-y:auto;padding:0 16px}
+.f-list::-webkit-scrollbar{display:none}
+.f-item{padding:14px 0;border-bottom:1px solid rgba(255,255,255,.04);display:flex;gap:12px}
+.f-item .fav{width:44px;height:44px;border-radius:50%;flex-shrink-0}
+.f-item .fbody{flex:1;min-width:0}
+.f-item .fname{font-size:15px;font-weight:600}
+.f-item .ftime{font-size:12px;color:#666;margin-top:1px}
+.f-item .ftext{font-size:14px;color:#ddd;margin-top:6px;line-height:1.4}
+.f-item .fimgs{display:grid;gap:3px;margin-top:8px;border-radius:8px;overflow:hidden}
+.f-item .fimgs.c3{grid-template-columns:repeat(3,1fr)}
+.f-item .fimgs.c1{grid-template-columns:1fr;max-width:200px}
+.f-item .fimgs div{aspect-ratio:1}
+.f-item .fstats{display:flex;gap:24px;margin-top:10px;font-size:12px;color:#888}
+
+/* ===== 个人主页 ===== */
+.p-scroll{flex:1;overflow-y:auto;background:#000}
+.p-scroll::-webkit-scrollbar{display:none}
+.p-cover{height:180px;background:linear-gradient(135deg,#2a1f3d,#1a1208);position:relative}
+.p-info{padding:0 16px 16px;position:relative}
+.p-avatar{width:80px;height:80px;border-radius:50%;border:3px solid #000;position:absolute;top:-40px;left:16px}
+.p-row{padding-left:100px;padding-top:8px}
+.p-name{font-size:20px;font-weight:700}
+.p-id{font-size:13px;color:#888;margin-top:2px}
+.p-stats{display:flex;gap:24px;margin-top:14px}
+.p-stat .n{font-size:17px;font-weight:700}
+.p-stat .l{font-size:12px;color:#888;margin-top:1px}
+.p-bio{font-size:14px;color:#ddd;margin-top:12px;line-height:1.5;white-space:pre-line}
+.p-actions{display:flex;gap:8px;margin-top:14px}
+.p-btn{flex:1;padding:8px 0;border-radius:6px;font-size:14px;font-weight:600;text-align:center;cursor:pointer}
+.p-btn.primary{background:#fe2c55;color:#fff}
+.p-btn.secondary{background:rgba(255,255,255,.1);color:#fff}
+.p-tabs{display:flex;border-bottom:1px solid rgba(255,255,255,.1);position:sticky;top:0;background:#000;z-index:10}
+.p-tab{flex:1;padding:12px 0;text-align:center;font-size:14px;color:#888;cursor:pointer;position:relative}
+.p-tab.active{color:#fff;font-weight:600}
+.p-tab.active::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:20px;height:2px;background:#fff;border-radius:1px}
+.p-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px}
+.p-grid .gc{aspect-ratio:3/4;position:relative;cursor:pointer;background-size:cover;background-position:center}
+.p-grid .gc .plays{position:absolute;bottom:4px;right:6px;font-size:11px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+
+/* ===== 搜索页 ===== */
+.s-top{padding:10px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0}
+.s-back{color:#fff;cursor:pointer;font-size:20px}
+.s-box{flex:1;background:rgba(255,255,255,.08);border-radius:20px;padding:8px 14px;display:flex;align-items:center;gap:8px}
+.s-box input{flex:1;background:none;border:none;outline:none;color:#fff;font-size:14px}
+.s-box input::placeholder{color:#666}
+.s-content{flex:1;overflow-y:auto;padding:16px}
+.s-content::-webkit-scrollbar{display:none}
+.s-section{margin-bottom:24px}
+.s-stitle{font-size:15px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.hot-item{display:flex;align-items:center;gap:12px;padding:8px 0;cursor:pointer}
+.hot-rank{width:20px;text-align:center;font-weight:700;font-size:15px}
+.hot-rank.top{color:#fe2c55}
+.hot-title{flex:1;font-size:14px}
+.hot-tag{font-size:11px;color:#fe2c55;font-weight:600}
+.s-history{display:flex;flex-wrap:wrap;gap:8px}
+.s-history div{padding:7px 14px;background:rgba(255,255,255,.08);border-radius:16px;font-size:13px;cursor:pointer}
+
+/* ===== 消息页 ===== */
+.m-quick{display:flex;justify-content:space-around;padding:16px 0;border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0}
+.m-quick .mq{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:11px;color:#aaa;cursor:pointer}
+.m-quick .mq .ic{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:22px}
+.m-list{flex:1;overflow-y:auto}
+.m-list::-webkit-scrollbar{display:none}
+.m-item{display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer}
+.m-item .mav{width:48px;height:48px;border-radius:50%;position:relative;flex-shrink:0}
+.m-item .mav .dot{position:absolute;top:-2px;right:-2px;width:10px;height:10px;background:#fe2c55;border-radius:50%;border:2px solid #000}
+.m-item .mbody{flex:1;min-width:0}
+.m-item .mname{font-size:15px;font-weight:600;display:flex;justify-content:space-between}
+.m-item .mname .mtime{font-size:11px;color:#666;font-weight:400}
+.m-item .mmsg{font-size:13px;color:#888;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ===== 聊天页 ===== */
+.c-scroll{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;background:#000}
+.c-scroll::-webkit-scrollbar{display:none}
+.c-msg{display:flex;gap:8px;max-width:80%}
+.c-msg.me{align-self:flex-end;flex-direction:row-reverse}
+.c-msg .cav{width:34px;height:34px;border-radius:50%;flex-shrink:0}
+.c-msg .cbubble{padding:10px 14px;border-radius:18px;font-size:14px;line-height:1.4}
+.c-msg.them .cbubble{background:#1c1c1e}
+.c-msg.me .cbubble{background:#fe2c55;color:#fff}
+.c-bar{padding:10px 16px;display:flex;align-items:center;gap:10px;border-top:1px solid rgba(255,255,255,.06);flex-shrink:0}
+.c-bar input{flex:1;background:#1c1c1e;border:none;border-radius:20px;padding:10px 16px;color:#fff;font-size:14px;outline:none}
+.c-bar .send{width:36px;height:36px;border-radius:50%;background:#fe2c55;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:16px}
+
+/* ===== 编辑资料 ===== */
+.e-field{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.06)}
+.e-field .elabel{width:80px;color:#888;font-size:15px}
+.e-field input,.e-field textarea,.e-field select{flex:1;background:none;border:none;outline:none;color:#fff;font-size:15px;text-align:right;font-family:inherit}
+.e-field textarea{resize:none;text-align:left;min-height:60px}
+.e-save{margin:16px;padding:12px;background:#fe2c55;border-radius:8px;text-align:center;font-weight:600;cursor:pointer}
+
+/* ===== 设置 ===== */
+.set-group{margin-bottom:8px}
+.set-item{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:#000;cursor:pointer}
+.set-item + .set-item{border-top:1px solid rgba(255,255,255,.04)}
+.set-label{font-size:15px}
+.set-val{font-size:13px;color:#666}
+.set-arrow{color:#444;font-size:18px}
+
+/* ===== 发布/编辑 ===== */
+.ed-preview{flex:1;position:relative;background:#1a1a1a;overflow:hidden}
+.ed-top{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;z-index:30}
+.ed-top .ed-close{width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;font-size:18px}
+.ed-top .ed-next{background:#fe2c55;color:#fff;padding:7px 18px;border-radius:18px;font-size:14px;font-weight:600;cursor:pointer}
+.ed-media{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.ed-media .mv{width:200px;height:340px;border-radius:8px;background-size:cover;background-position:center;position:relative;overflow:hidden}
+.ed-media .mv::after{content:'';position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.4),transparent)}
+.ed-tools{display:flex;justify-content:space-around;padding:10px 0;background:#1c1c1e;border-top:1px solid rgba(255,255,255,.06);flex-shrink:0}
+.ed-tool{display:flex;flex-direction:column;align-items:center;gap:3px;color:#fff;font-size:11px;cursor:pointer;padding:4px 8px}
+.ed-tool svg{width:24px;height:24px}
+.ed-timeline{display:flex;gap:2px;padding:6px 12px;background:#000;overflow-x:auto;flex-shrink:0}
+.ed-timeline::-webkit-scrollbar{display:none}
+.ed-clip{min-width:42px;height:52px;border-radius:3px;flex-shrink:0;background-size:cover;background-position:center;border:2px solid transparent;cursor:pointer}
+.ed-clip.active{border-color:#fe2c55}
+.ed-panel{position:absolute;bottom:0;left:0;right:0;background:#1c1c1e;border-radius:14px 14px 0 0;transform:translateY(100%);transition:transform .28s;z-index:400;max-height:52%;display:flex;flex-direction:column}
+.ed-panel.open{transform:translateY(0)}
+.ed-panel .phandle{width:32px;height:3px;background:#444;border-radius:2px;margin:8px auto;flex-shrink:0}
+.ed-stickers{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;padding:12px;overflow-y:auto}
+.ed-stickers::-webkit-scrollbar{display:none}
+.ed-stickers div{aspect-ratio:1;background:#2c2c2e;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer}
+.ed-stickers div:active{transform:scale(.9)}
+.ed-music{padding:8px 16px;overflow-y:auto}
+.ed-music::-webkit-scrollbar{display:none}
+.ed-mitem{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.ed-mitem .mcover{width:40px;height:40px;border-radius:6px;flex-shrink:0}
+.ed-mitem .minfo{flex:1}
+.ed-mitem .mname{font-size:14px}
+.ed-mitem .mdesc{font-size:11px;color:#666;margin-top:2px}
+.ed-mitem .mcheck{color:#fe2c55;font-size:18px}
+.ed-text{padding:16px}
+.ed-text input{width:100%;background:#2c2c2e;border:none;border-radius:10px;padding:12px;color:#fff;font-size:15px;outline:none;text-align:center;margin-bottom:12px}
+.ed-styles{display:flex;gap:8px;justify-content:center;margin-bottom:12px}
+.ed-styles div{width:38px;height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;cursor:pointer}
+
+/* ===== 引导页 ===== */
+.guide{background:radial-gradient(ellipse at 50% 20%,rgba(255,200,120,.15),transparent 60%),linear-gradient(180deg,#1a1208,#0a0603)}
+.guide .gtitle{font-family:"Ma Shan Zheng",serif;font-size:42px;text-align:center;color:#fff;line-height:1.2;text-shadow:0 2px 12px rgba(0,0,0,.6),0 0 30px rgba(255,200,120,.2)}
+.guide .gsub{text-align:center;font-size:14px;color:rgba(255,220,170,.8);letter-spacing:4px;margin-top:14px;display:flex;align-items:center;justify-content:center;gap:12px}
+.guide .gsub::before,.guide .gsub::after{content:'';width:24px;height:1px;background:linear-gradient(90deg,transparent,rgba(255,200,140,.5))}
+.guide .gsub::after{background:linear-gradient(90deg,rgba(255,200,140,.5),transparent)}
+.guide .gstage{width:240px;height:320px;margin:36px auto 0;border-radius:36px;background:linear-gradient(180deg,#2a1d10,#140d05);box-shadow:0 0 0 2px rgba(255,210,150,.2),0 20px 60px rgba(0,0,0,.6);position:relative;display:flex;align-items:center;justify-content:center}
+.guide .gnote{font-size:110px;background:linear-gradient(135deg,#f5e6c8,#fff8e8 50%,#d4b88a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 6px 12px rgba(0,0,0,.5))}
+.guide .gbtn{display:block;margin:36px auto 0;padding:13px 52px;border-radius:26px;background:linear-gradient(135deg,#fe2c55,#ff4d6d);color:#fff;font-size:15px;font-weight:700;letter-spacing:3px;border:none;cursor:pointer;box-shadow:0 8px 24px rgba(254,44,85,.4)}
+
+/* ===== 登录页 ===== */
+.login{background:#000;padding:0 32px}
+.login .logo{font-size:40px;font-weight:900;margin-top:100px;background:linear-gradient(135deg,#fe2c55,#25f4ee);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.login .slogan{color:#666;font-size:14px;margin-top:6px}
+.login .field{margin-top:32px}
+.login .flabel{font-size:13px;color:#888;margin-bottom:8px}
+.login input{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:13px 16px;color:#fff;font-size:15px;outline:none;box-sizing:border-box}
+.login input:focus{border-color:#fe2c55}
+.login .code-row{display:flex;gap:10px}
+.login .code-row input{flex:1}
+.login .code-btn{padding:0 18px;background:#fe2c55;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+.login .code-btn:disabled{opacity:.5}
+.login .login-btn{width:100%;margin-top:36px;padding:14px;background:linear-gradient(135deg,#fe2c55,#ff4d6d);color:#fff;border:none;border-radius:26px;font-size:16px;font-weight:700;cursor:pointer}
+.login .guest{width:100%;margin-top:12px;padding:14px;background:transparent;color:#aaa;border:1px solid rgba(255,255,255,.15);border-radius:26px;font-size:14px;cursor:pointer}
+.login .third{position:absolute;bottom:50px;left:0;right:0;text-align:center}
+.login .third-icons{display:flex;justify-content:center;gap:24px;font-size:28px;margin-bottom:16px}
+.login .third-tip{font-size:11px;color:#444}
+
+/* 通用 */
+.toast{position:absolute;top:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.85);color:#fff;padding:9px 18px;border-radius:18px;font-size:13px;z-index:2000;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+@keyframes heartPop{0%{opacity:0;transform:translateY(16px) scale(.7)}50%{opacity:1;transform:translateY(-8px) scale(1.1)}100%{opacity:0;transform:translateY(-50px) scale(1)}}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="phone" id="phone">
+  <div class="notch"></div>
+  <div class="statusbar" id="sb"><span id="clock">9:41</span><span>●●● 📶 🔋</span></div>
+  <div class="toast" id="toast"></div>
+
+  <!-- 引导页 -->
+  <div class="page guide active" id="p-guide" style="overflow:hidden">
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 24px">
+      <div class="gtitle">致每一位<br/>好好生活的人</div>
+      <div class="gsub">抖音 · 生活者说</div>
+      <div class="gstage"><div class="gnote">♪</div></div>
+      <button class="gbtn" onclick="go('login')">开 始 体 验</button>
+    </div>
+  </div>
+
+  <!-- 登录页 -->
+  <div class="page login" id="p-login">
+    <div class="logo">抖音</div>
+    <div class="slogan">记录美好生活</div>
+    <div class="field">
+      <div class="flabel">手机号</div>
+      <input id="lphone" type="tel" placeholder="请输入手机号" />
+    </div>
+    <div class="field">
+      <div class="flabel">验证码</div>
+      <div class="code-row">
+        <input id="lcode" type="text" placeholder="6位验证码" />
+        <button id="codeBtn" class="code-btn" onclick="sendCode()">获取验证码</button>
+      </div>
+    </div>
+    <button class="login-btn" onclick="doLogin()">登 录</button>
+    <button class="guest" onclick="go('home')">游客模式浏览</button>
+    <div class="third">
+      <div class="third-icons">
+        <span onclick="toast('微信登录')">💬</span>
+        <span onclick="toast('QQ登录')">🐧</span>
+        <span onclick="toast('Apple登录')">🍎</span>
+      </div>
+      <div class="third-tip">登录即代表同意《用户协议》和《隐私政策》</div>
+    </div>
+  </div>
+
+  <!-- 首页 -->
+  <div class="page" id="p-home">
+    <div class="feed" id="feed"></div>
+    <div class="toptabs">
+      <div class="ttab" data-t="follow">关注</div>
+      <div class="ttab" data-t="friends">朋友</div>
+      <div class="ttab active" data-t="recommend">推荐</div>
+    </div>
+    <div class="search-ic" onclick="go('search')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+    </div>
+  </div>
+
+  <!-- 朋友 -->
+  <div class="page" id="p-friends">
+    <div class="f-top"><div class="title">朋友</div><div style="font-size:20px;cursor:pointer" onclick="go('search')">🔍</div></div>
+    <div class="f-list noscroll" id="fList"></div>
+  </div>
+
+  <!-- 发布编辑 -->
+  <div class="page" id="p-create">
+    <div class="ed-preview" id="edPreview">
+      <div class="ed-top">
+        <div class="ed-close" onclick="go('home')">✕</div>
+        <div class="ed-next" onclick="toast('发布成功')">下一步</div>
+      </div>
+      <div class="ed-media"><div class="mv" id="previewMedia" style="background-image:linear-gradient(to bottom,#fbbf24,#b45309)"></div></div>
+      <div id="stickerLayer" style="position:absolute;inset:0;pointer-events:none"></div>
+    </div>
+    <div class="ed-timeline noscroll" id="edTimeline"></div>
+    <div class="ed-tools">
+      <div class="ed-tool" onclick="openPanel('sticker')"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm3.5 6c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5-1.5-.67-1.5-1.5.67-1.5 1.5-1.5zm-7 0c.83 0 1.5.67 1.5 1.5S9.33 11 8.5 11 7 10.33 7 9.5 7.67 8 8.5 8zm3.5 9.5c-2.33 0-4.32-1.45-5.12-3.5h10.24c-.8 2.05-2.79 3.5-5.12 3.5z"/></svg>贴纸</div>
+      <div class="ed-tool" onclick="openPanel('text')"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 4v3h5.5v12h3V7H19V4z"/></svg>文字</div>
+      <div class="ed-tool" onclick="openPanel('effect')"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z"/></svg>特效</div>
+      <div class="ed-tool" onclick="openPanel('filter')"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8z"/></svg>滤镜</div>
+      <div class="ed-tool" onclick="openPanel('music')"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>音乐</div>
+      <div class="ed-tool" onclick="toast('配音')"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>配音</div>
+    </div>
+
+    <!-- 面板 -->
+    <div class="ed-panel" id="pn-sticker">
+      <div class="phandle" onclick="closePanels()"></div>
+      <div class="ed-stickers noscroll" id="stickerGrid"></div>
+    </div>
+    <div class="ed-panel" id="pn-text">
+      <div class="phandle" onclick="closePanels()"></div>
+      <div class="ed-text">
+        <input id="textInput" placeholder="输入文字..." />
+        <div class="ed-styles">
+          <div style="background:#fff;color:#000" onclick="setTextStyle('white')">A</div>
+          <div style="background:linear-gradient(90deg,#fe2c55,#25f4ee);color:#fff" onclick="setTextStyle('gradient')">A</div>
+          <div style="background:#fde047;color:#000" onclick="setTextStyle('yellow')">A</div>
+          <div style="border:2px solid #fff;color:#fff" onclick="setTextStyle('outline')">A</div>
+          <div style="background:#ef4444;color:#fff" onclick="setTextStyle('red')">A</div>
+        </div>
+        <button style="width:100%;padding:12px;background:#fe2c55;border:none;border-radius:10px;color:#fff;font-weight:600;font-size:15px;cursor:pointer" onclick="addText()">添加文字</button>
+      </div>
+    </div>
+    <div class="ed-panel" id="pn-effect">
+      <div class="phandle" onclick="closePanels()"></div>
+      <div class="ed-stickers noscroll">
+        <div onclick="toast('闪光')">✨</div><div onclick="toast('星光')">🌟</div><div onclick="toast('爱心')">💖</div><div onclick="toast('雪花')">❄️</div><div onclick="toast('火焰')">🔥</div><div onclick="toast('彩虹')">🌈</div>
+        <div onclick="toast('闪电')">⚡</div><div onclick="toast('气泡')">🫧</div><div onclick="toast('烟雾')">💨</div><div onclick="toast('光晕')">💫</div><div onclick="toast('蝴蝶')">🦋</div><div onclick="toast('花瓣')">🌸</div>
+      </div>
+    </div>
+    <div class="ed-panel" id="pn-filter">
+      <div class="phandle" onclick="closePanels()"></div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:12px">
+        <div style="text-align:center;cursor:pointer" onclick="applyFilter('none',this)"><div style="aspect-ratio:1;border-radius:10px;background:linear-gradient(135deg,#fbbf24,#b45309);margin-bottom:4px"></div><div style="font-size:11px">原图</div></div>
+        <div style="text-align:center;cursor:pointer" onclick="applyFilter('warm',this)"><div style="aspect-ratio:1;border-radius:10px;background:linear-gradient(135deg,#fde047,#dc2626);margin-bottom:4px"></div><div style="font-size:11px">暖阳</div></div>
+        <div style="text-align:center;cursor:pointer" onclick="applyFilter('cool',this)"><div style="aspect-ratio:1;border-radius:10px;background:linear-gradient(135deg,#60a5fa,#4338ca);margin-bottom:4px"></div><div style="font-size:11px">冷调</div></div>
+        <div style="text-align:center;cursor:pointer" onclick="applyFilter('bw',this)"><div style="aspect-ratio:1;border-radius:10px;background:linear-gradient(135deg,#d1d5db,#374151);margin-bottom:4px"></div><div style="font-size:11px">黑白</div></div>
+        <div style="text-align:center;cursor:pointer" onclick="applyFilter('vintage',this)"><div style="aspect-ratio:1;border-radius:10px;background:linear-gradient(135deg,#fef3c7,#92400e);margin-bottom:4px"></div><div style="font-size:11px">复古</div></div>
+        <div style="text-align:center;cursor:pointer" onclick="applyFilter('fresh',this)"><div style="aspect-ratio:1;border-radius:10px;background:linear-gradient(135deg,#86efac,#0d9488);margin-bottom:4px"></div><div style="font-size:11px">清新</div></div>
+        <div style="text-align:center;cursor:pointer" onclick="applyFilter('cinema',this)"><div style="aspect-ratio:1;border-radius:10px;background:linear-gradient(135deg,#94a3b8,#1e293b);margin-bottom:4px"></div><div style="font-size:11px">电影</div></div>
+        <div style="text-align:center;cursor:pointer" onclick="applyFilter('pink',this)"><div style="aspect-ratio:1;border-radius:10px;background:linear-gradient(135deg,#f9a8d4,#e11d48);margin-bottom:4px"></div><div style="font-size:11px">蜜桃</div></div>
+      </div>
+    </div>
+    <div class="ed-panel" id="pn-music">
+      <div class="phandle" onclick="closePanels()"></div>
+      <div class="ed-music noscroll" id="musicList"></div>
+    </div>
+  </div>
+
+  <!-- 消息 -->
+  <div class="page" id="p-messages">
+    <div class="f-top"><div class="title">消息</div><div style="font-size:20px">⚙️</div></div>
+    <div class="m-quick">
+      <div class="mq" onclick="toast('赞和收藏')"><div class="ic">❤️</div>赞藏</div>
+      <div class="mq" onclick="toast('评论')"><div class="ic">💬</div>评论</div>
+      <div class="mq" onclick="toast('新粉丝')"><div class="ic">👤</div>粉丝</div>
+      <div class="mq" onclick="toast('分享')"><div class="ic">↗️</div>分享</div>
+    </div>
+    <div class="m-list noscroll" id="mList"></div>
+  </div>
+
+  <!-- 聊天 -->
+  <div class="page" id="p-chat">
+    <div class="f-top"><div class="s-back" onclick="go('messages')">‹</div><div class="title" id="chatTitle">聊天</div><div style="width:20px"></div></div>
+    <div class="c-scroll noscroll" id="cScroll"></div>
+    <div class="c-bar">
+      <input id="cInput" placeholder="说点什么..." onkeydown="if(event.key==='Enter')sendChat()" />
+      <div class="send" onclick="sendChat()">➤</div>
+    </div>
+  </div>
+
+  <!-- 我 -->
+  <div class="page" id="p-profile">
+    <div class="p-scroll noscroll">
+      <div class="p-cover"></div>
+      <div class="p-info">
+        <div class="p-avatar" style="background:linear-gradient(135deg,#f472b6,#a855f7)"></div>
+        <div class="p-row">
+          <div class="p-name" id="pName">创意小达人</div>
+          <div class="p-id">抖音号: creator_2026</div>
+        </div>
+        <div class="p-stats">
+          <div class="p-stat"><div class="n">128</div><div class="l">关注</div></div>
+          <div class="p-stat"><div class="n">12.6w</div><div class="l">粉丝</div></div>
+          <div class="p-stat"><div class="n">89.2w</div><div class="l">获赞</div></div>
+        </div>
+        <div class="p-bio" id="pBio">🎬 记录生活美好瞬间
+📍 北京 · 合作V: creator2026</div>
+        <div class="p-actions">
+          <div class="p-btn primary" onclick="go('editprofile')">编辑资料</div>
+          <div class="p-btn secondary" onclick="toast('分享成功')">分享主页</div>
+        </div>
+      </div>
+      <div class="p-tabs">
+        <div class="p-tab active">作品 9</div>
+        <div class="p-tab">喜欢</div>
+        <div class="p-tab">收藏</div>
+      </div>
+      <div class="p-grid" id="pGrid"></div>
+      <div style="height:40px"></div>
+    </div>
+  </div>
+
+  <!-- 编辑资料 -->
+  <div class="page" id="p-editprofile">
+    <div class="f-top"><div class="s-back" onclick="go('profile')">‹</div><div class="title">编辑资料</div><div style="color:#fe2c55;font-size:15px;cursor:pointer" onclick="saveProfile()">保存</div></div>
+    <div style="flex:1;overflow-y:auto" class="noscroll">
+      <div class="e-field"><div class="elabel">昵称</div><input id="epName" /></div>
+      <div class="e-field"><div class="elabel">抖音号</div><input id="epId" /></div>
+      <div class="e-field" style="flex-direction:column;align-items:flex-start;gap:8px"><div class="elabel">简介</div><textarea id="epBio" style="width:100%"></textarea></div>
+      <div class="e-field"><div class="elabel">性别</div><select id="epGender"><option>男</option><option>女</option><option>保密</option></select></div>
+      <div class="e-field"><div class="elabel">生日</div><input id="epBirthday" type="date" /></div>
+      <div class="e-field"><div class="elabel">地区</div><input id="epRegion" placeholder="北京" /></div>
+      <div class="e-save" onclick="saveProfile()">保 存</div>
+    </div>
+  </div>
+
+  <!-- 搜索 -->
+  <div class="page" id="p-search">
+    <div class="s-top">
+      <div class="s-back" onclick="go('home')">‹</div>
+      <div class="s-box">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="sInput" placeholder="搜索你感兴趣的内容" onkeydown="if(event.key==='Enter')doSearch()" />
+      </div>
+    </div>
+    <div class="s-content noscroll" id="sContent"></div>
+  </div>
+
+  <!-- 设置 -->
+  <div class="page" id="p-settings">
+    <div class="f-top"><div class="s-back" onclick="go('profile')">‹</div><div class="title">设置</div><div style="width:20px"></div></div>
+    <div style="flex:1;overflow-y:auto" class="noscroll">
+      <div style="padding:10px 16px;font-size:12px;color:#666">账号</div>
+      <div class="set-group">
+        <div class="set-item" onclick="toast('账号与安全')"><span class="set-label">账号与安全</span><span class="set-arrow">›</span></div>
+        <div class="set-item" onclick="toast('隐私设置')"><span class="set-label">隐私设置</span><span class="set-arrow">›</span></div>
+        <div class="set-item" onclick="toast('青少年模式')"><span class="set-label">青少年模式</span><span class="set-val">未开启</span><span class="set-arrow">›</span></div>
+      </div>
+      <div style="padding:10px 16px;font-size:12px;color:#666">通用</div>
+      <div class="set-group">
+        <div class="set-item" onclick="toast('通用设置')"><span class="set-label">通用设置</span><span class="set-arrow">›</span></div>
+        <div class="set-item" onclick="toast('通知设置')"><span class="set-label">通知设置</span><span class="set-arrow">›</span></div>
+        <div class="set-item" onclick="toast('缓存已清理')"><span class="set-label">清理缓存</span><span class="set-val">128.5 MB</span><span class="set-arrow">›</span></div>
+      </div>
+      <div style="padding:10px 16px;font-size:12px;color:#666">关于</div>
+      <div class="set-group">
+        <div class="set-item"><span class="set-label">关于抖音</span><span class="set-val">v21.6.0</span><span class="set-arrow">›</span></div>
+      </div>
+      <div style="padding:16px"><button style="width:100%;padding:13px;background:rgba(255,255,255,.06);border:none;border-radius:10px;color:#fe2c55;font-size:15px;font-weight:600;cursor:pointer" onclick="logout()">退出登录</button></div>
+    </div>
+  </div>
+
+  <!-- 评论抽屉 -->
+  <div class="sheet" id="cmtSheet">
+    <div class="handle" onclick="closeComments()"></div>
+    <div class="cmt-header" id="cmtCount">0 条评论</div>
+    <div class="cmt-list noscroll" id="cmtList"></div>
+    <div class="cmt-input">
+      <input id="cmtInput" placeholder="说点什么..." onkeydown="if(event.key==='Enter')sendComment()" />
+      <button onclick="sendComment()">发送</button>
+    </div>
+  </div>
+
+  <!-- 底部导航 -->
+  <div class="tabbar" id="tabbar">
+    <div class="tab active" data-tab="home">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>首页
+    </div>
+    <div class="tab" data-tab="friends">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>朋友
+    </div>
+    <div class="tab-create" onclick="go('create')"></div>
+    <div class="tab" data-tab="messages">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>消息
+    </div>
+    <div class="tab" data-tab="profile">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>我
+    </div>
+  </div>
+</div>
+
+<script>
+/* ====== 数据 ====== */
+const S={liked:new Set(),faved:new Set(),followed:new Set(),history:['海边日落','美食探店','旅行vlog'],profile:{name:'创意小达人',id:'creator_2026',bio:'🎬 记录生活美好瞬间\n📍 北京 · 合作V: creator2026',gender:'男',birthday:'1998-06-15',region:'北京'}};
+const fmt=n=>n>=10000?(n/10000).toFixed(1)+'w':n;
+const videos=[
+  {id:0,author:'旅行的小鱼',av:'linear-gradient(135deg,#667eea,#764ba2)',bg:'linear-gradient(135deg,#667eea,#764ba2)',desc:'海边的日落永远看不腻 🌅 #旅行 #日落 #治愈系\n带你们看最美的海岸线',music:'原声 - 旅行的小鱼',likes:'12.6w',c:3264,fav:'8923'},
+  {id:1,author:'美食探店王',av:'linear-gradient(135deg,#f093fb,#f5576c)',bg:'linear-gradient(135deg,#f093fb,#f5576c)',desc:'这家隐藏小店的招牌太绝了 🍜 排队2小时值不值？#美食 #探店',music:'热门BGM - 抖音热歌',likes:'8.2w',c:1203,fav:'4521'},
+  {id:2,author:'科技前线',av:'linear-gradient(135deg,#4facfe,#00f2fe)',bg:'linear-gradient(135deg,#4facfe,#00f2fe)',desc:'2026年最值得买的手机TOP5 📱 你猜对了吗？#科技 #数码',music:'Future Bass - Electronic',likes:'23.1w',c:5621,fav:'1.2w'},
+  {id:3,author:'猫咪观察员',av:'linear-gradient(135deg,#a8edea,#fed6e3)',bg:'linear-gradient(135deg,#a8edea,#fed6e3)',desc:'我家猫又在拆家了 😼 谁来管管 #萌宠 #猫咪',music:'可爱猫咪 - 萌系BGM',likes:'45.8w',c:8921,fav:'3.2w'},
+  {id:4,author:'健身教练Leo',av:'linear-gradient(135deg,#fa709a,#fee140)',bg:'linear-gradient(135deg,#fa709a,#fee140)',desc:'7天瘦3斤的燃脂操，跟着做就对了 💪 #健身 #减肥',music:'燃脂节奏 - Workout',likes:'18.3w',c:4521,fav:'2.1w'},
+];
+const friends=[
+  {name:'小明同学',av:'linear-gradient(135deg,#f472b6,#a855f7)',time:'2分钟前',text:'今天天气真好，出去走走 ☀️',imgs:3,likes:128,comments:23},
+  {name:'程序员阿杰',av:'linear-gradient(135deg,#22d3ee,#3b82f6)',time:'1小时前',text:'新功能上线啦！欢迎大家来体验 🚀',imgs:0,likes:356,comments:45},
+  {name:'旅行达人Lily',av:'linear-gradient(135deg,#4ade80,#14b8a6)',time:'3小时前',text:'云南真的太美了，下次还要来 🏔️',imgs:3,likes:512,comments:67},
+  {name:'美食博主',av:'linear-gradient(135deg,#fbbf24,#f97316)',time:'昨天',text:'自制红烧肉教程来啦，软烂入味 🍖',imgs:2,likes:892,comments:103},
+];
+const chats=[
+  {id:0,name:'抖音小助手',av:'linear-gradient(135deg,#f472b6,#a855f7)',msg:'欢迎使用抖音，快来创作你的第一个视频吧！',time:'下午3:20',unread:true},
+  {id:1,name:'小明同学',av:'linear-gradient(135deg,#22d3ee,#3b82f6)',msg:'你那个视频拍得太好看了！',time:'下午2:15',unread:false},
+  {id:2,name:'旅行达人Lily',av:'linear-gradient(135deg,#4ade80,#14b8a6)',msg:'下次一起去海边呀 🏖️',time:'上午11:02',unread:false},
+  {id:3,name:'美食探店王',av:'linear-gradient(135deg,#fbbf24,#f97316)',msg:'给你推荐一家超棒的店',time:'昨天',unread:false},
+];
+const hot=[
+  {r:1,t:'国庆假期出游攻略',tag:'热'},{r:2,t:'2026秋冬流行色',tag:'新'},{r:3,t:'AI绘画神级作品',tag:''},
+  {r:4,t:'深夜食堂治愈系',tag:''},{r:5,t:'健身燃脂操跟练',tag:'热'},{r:6,t:'猫咪搞笑日常',tag:''},
+  {r:7,t:'城市夜景航拍',tag:''},{r:8,t:'秋日穿搭分享',tag:'新'},{r:9,t:'手冲咖啡入门',tag:''},{r:10,t:'周末City Walk',tag:''},
+];
+const stickers=['😀','😍','🥰','😎','🤩','😭','😡','🥳','🤔','😴','👍','👏','🙏','💪','👀','❤️','💖','💕','🔥','⭐','🌟','✨','🌈','☀️','🌙','🍕','🍔','🍟','🎂','☕','🐶','🐱','🐰','🐼','🦊','🌸','🌹','🌻','🎵','🎮','⚽','🎨','📷','🎁','🎉'];
+const musics=[
+  {name:'夏日海风',desc:'轻音乐 · 1.2w使用',c:'linear-gradient(135deg,#60a5fa,#a855f7)',on:true},
+  {name:'心动节奏',desc:'流行 · 3.5w使用',c:'linear-gradient(135deg,#f472b6,#ef4444)',on:false},
+  {name:'森林漫步',desc:'治愈 · 8921使用',c:'linear-gradient(135deg,#4ade80,#14b8a6)',on:false},
+  {name:'阳光正好',desc:'欢快 · 2.1w使用',c:'linear-gradient(135deg,#fbbf24,#f97316)',on:false},
+  {name:'雨夜',desc:'安静 · 1.5w使用',c:'linear-gradient(135deg,#94a3b8,#475569)',on:false},
+];
+const cmts={0:[
+  {name:'阳光女孩',av:'linear-gradient(135deg,#f472b6,#a855f7)',text:'这个日落也太美了吧！求位置 🙏',time:'1小时前',l:256},
+  {name:'旅行日记',av:'linear-gradient(135deg,#22d3ee,#3b82f6)',text:'已收藏，下个月就去！',time:'2小时前',l:128},
+  {name:'摄影师老王',av:'linear-gradient(135deg,#4ade80,#14b8a6)',text:'构图绝了，用的什么相机？',time:'3小时前',l:89},
+  {name:'风景收藏家',av:'linear-gradient(135deg,#fbbf24,#f97316)',text:'治愈了我一天的疲惫 🌅',time:'5小时前',l:342},
+]};
+const chatHis={1:[
+  {f:'them',t:'你那个视频拍得太好看了！',time:'14:15'},
+  {f:'me',t:'谢谢啦～下次一起去拍',time:'14:20'},
+  {f:'them',t:'好啊好啊，周末有空吗',time:'14:21'},
+]};
+
+/* ====== 工具 ====== */
+let tt;
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),1500);}
+
+/* ====== 路由 ====== */
+function go(p){
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+  document.getElementById('p-'+p).classList.add('active');
+  const tm={home:0,friends:1,messages:3,profile:4};
+  const tb=document.getElementById('tabbar');
+  if(tm[p]!==undefined){tb.style.display='flex';document.querySelectorAll('.tab').forEach((x,i)=>x.classList.toggle('active',i===tm[p]));}
+  else{tb.style.display='none';}
+  closeComments();closePanels();
+  if(p==='home')renderFeed();
+  if(p==='friends')renderFriends();
+  if(p==='messages')renderChats();
+  if(p==='profile')renderProfile();
+  if(p==='search')renderSearch();
+  if(p==='editprofile')loadEP();
+}
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>go(t.dataset.tab)));
+
+/* ====== 登录 ====== */
+let cd=0;
+function sendCode(){
+  const ph=document.getElementById('lphone').value.trim();
+  if(!/^1\d{10}$/.test(ph)){toast('请输入正确的手机号');return;}
+  if(cd>0)return;
+  cd=60;const b=document.getElementById('codeBtn');b.disabled=true;
+  const t=setInterval(()=>{cd--;b.textContent=cd+'s';if(cd<=0){clearInterval(t);b.textContent='获取验证码';b.disabled=false;}},1000);
+  toast('验证码已发送（演示：123456）');
+}
+function doLogin(){
+  const ph=document.getElementById('lphone').value.trim();
+  if(!/^1\d{10}$/.test(ph)){toast('请输入正确的手机号');return;}
+  if(!document.getElementById('lcode').value.trim()){toast('请输入验证码');return;}
+  toast('登录成功');setTimeout(()=>go('home'),400);
+}
+
+/* ====== 首页 ====== */
+function renderFeed(){
+  const f=document.getElementById('feed');
+  f.innerHTML=videos.map((v,i)=>`
+    <div class="vcard">
+      <div class="vbg" style="background:${v.bg}"></div>
+      <div class="vgrad"></div>
+      <div class="side">
+        <div class="sa avatar-btn" onclick="toggleFollow(${i})">
+          <div class="av" style="background:${v.av}"></div>
+          <div class="plus">+</div>
+        </div>
+        <div class="sa" onclick="toggleLike(${i},this)">
+          <svg viewBox="0 0 24 24" fill="${S.liked.has(i)?'#fe2c55':'#fff'}" stroke="${S.liked.has(i)?'#fe2c55':'#fff'}" stroke-width="1.5"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+          <div class="num">${v.likes}</div>
+        </div>
+        <div class="sa" onclick="openComments(${i})">
+          <svg viewBox="0 0 24 24" fill="#fff"><path d="M21.99 4c0-1.1-.89-2-1.99-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18z"/></svg>
+          <div class="num">${v.c}</div>
+        </div>
+        <div class="sa" onclick="toggleFav(${i},this)">
+          <svg viewBox="0 0 24 24" fill="${S.faved.has(i)?'#fe2c55':'none'}" stroke="#fff" stroke-width="2"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+          <div class="num">${v.fav}</div>
+        </div>
+        <div class="sa" onclick="toast('分享到...')">
+          <svg viewBox="0 0 24 24" fill="#fff"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/></svg>
+          <div class="num">分享</div>
+        </div>
+        <div class="disc"><div class="art" style="background:${v.av}"></div></div>
+      </div>
+      <div class="vinfo">
+        <div class="author">@${v.author}</div>
+        <div class="desc">${v.desc}</div>
+        <div class="music">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+          <span class="marquee">${v.music} &nbsp;&nbsp; ${v.music} &nbsp;&nbsp;</span>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+function toggleLike(i,el){
+  const svg=el.querySelector('svg');
+  if(S.liked.has(i)){S.liked.delete(i);svg.setAttribute('fill','#fff');svg.setAttribute('stroke','#fff');}
+  else{
+    S.liked.add(i);svg.setAttribute('fill','#fe2c55');svg.setAttribute('stroke','#fe2c55');
+    const h=document.createElement('div');h.textContent='❤️';h.style.cssText='position:absolute;left:50%;top:50%;font-size:30px;pointer-events:none;z-index:50';h.className='heart-pop';
+    el.appendChild(h);setTimeout(()=>h.remove(),1000);
+  }
+}
+function toggleFav(i,el){
+  const svg=el.querySelector('svg');
+  if(S.faved.has(i)){S.faved.delete(i);svg.setAttribute('fill','none');}
+  else{S.faved.add(i);svg.setAttribute('fill','#fe2c55');toast('已收藏');}
+}
+function toggleFollow(i){
+  if(S.followed.has(i)){S.followed.delete(i);toast('已取消关注');}else{S.followed.add(i);toast('关注成功');}
+}
+document.querySelectorAll('.ttab').forEach(t=>t.addEventListener('click',()=>{
+  document.querySelectorAll('.ttab').forEach(x=>x.classList.remove('active'));t.classList.add('active');
+}));
+
+/* ====== 朋友 ====== */
+function renderFriends(){
+  document.getElementById('fList').innerHTML=friends.map((p,i)=>`
+    <div class="f-item">
+      <div class="fav" style="background:${p.av}"></div>
+      <div class="fbody">
+        <div style="display:flex;justify-content:space-between"><span class="fname">${p.name}</span><span class="ftime">${p.time}</span></div>
+        <div class="ftext">${p.text}</div>
+        ${p.imgs?`<div class="fimgs c${p.imgs}">${Array(p.imgs).fill(0).map((_,j)=>`<div style="background:hsl(${i*60+j*40},70%,60%)"></div>`).join('')}</div>`:''}
+        <div class="fstats"><span>👍 ${p.likes}</span><span>💬 ${p.comments}</span></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ====== 消息 ====== */
+function renderChats(){
+  document.getElementById('mList').innerHTML=chats.map(c=>`
+    <div class="m-item" onclick="openChat(${c.id})">
+      <div class="mav" style="background:${c.av}">${c.unread?'<div class="dot"></div>':''}</div>
+      <div class="mbody"><div class="mname">${c.name}<span class="mtime">${c.time}</span></div><div class="mmsg">${c.msg}</div></div>
+    </div>
+  `).join('');
+}
+let curChat=0;
+function openChat(id){
+  curChat=id;document.getElementById('chatTitle').textContent=chats[id].name;
+  const msgs=chatHis[id]||[];const c=chats[id];
+  document.getElementById('cScroll').innerHTML=msgs.map(m=>`
+    <div class="c-msg ${m.f}">
+      ${m.f==='them'?`<div class="cav" style="background:${c.av}"></div>`:''}
+      <div class="cbubble">${m.t}</div>
+    </div>
+  `).join('');
+  const s=document.getElementById('cScroll');s.scrollTop=s.scrollHeight;
+  go('chat');
+}
+function sendChat(){
+  const i=document.getElementById('cInput');const t=i.value.trim();if(!t)return;
+  if(!chatHis[curChat])chatHis[curChat]=[];
+  chatHis[curChat].push({f:'me',t,time:new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})});
+  i.value='';openChat(curChat);
+  setTimeout(()=>{chatHis[curChat].push({f:'them',t:'收到～',time:new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})});if(document.getElementById('p-chat').classList.contains('active'))openChat(curChat);},800);
+}
+
+/* ====== 个人主页 ====== */
+function renderProfile(){
+  document.getElementById('pName').textContent=S.profile.name;
+  document.getElementById('pBio').textContent=S.profile.bio;
+  document.getElementById('pGrid').innerHTML=videos.map(v=>`<div class="gc" style="background:${v.bg}" onclick="toast('播放视频')"><div class="plays">▶ ${v.likes}</div></div>`).join('');
+}
+
+/* ====== 编辑资料 ====== */
+function loadEP(){
+  document.getElementById('epName').value=S.profile.name;
+  document.getElementById('epId').value=S.profile.id;
+  document.getElementById('epBio').value=S.profile.bio;
+  document.getElementById('epGender').value=S.profile.gender;
+  document.getElementById('epBirthday').value=S.profile.birthday;
+  document.getElementById('epRegion').value=S.profile.region;
+}
+function saveProfile(){
+  S.profile.name=document.getElementById('epName').value||S.profile.name;
+  S.profile.id=document.getElementById('epId').value;
+  S.profile.bio=document.getElementById('epBio').value;
+  S.profile.gender=document.getElementById('epGender').value;
+  S.profile.birthday=document.getElementById('epBirthday').value;
+  S.profile.region=document.getElementById('epRegion').value;
+  toast('保存成功');setTimeout(()=>go('profile'),300);
+}
+
+/* ====== 搜索 ====== */
+function renderSearch(){
+  const c=document.getElementById('sContent');
+  c.innerHTML=`
+    <div class="s-section"><div class="s-stitle">🔥 抖音热榜</div>
+    ${hot.map(h=>`<div class="hot-item" onclick="searchThis('${h.t}')"><span class="hot-rank ${h.r<=3?'top':''}">${h.r}</span><span class="hot-title">${h.t}</span>${h.tag?`<span class="hot-tag">${h.tag}</span>`:''}</div>`).join('')}
+    </div>
+    <div class="s-section"><div class="s-stitle" style="display:flex;justify-content:space-between">🕐 搜索历史 <span style="font-size:12px;color:#666;font-weight:400;cursor:pointer" onclick="clearHistory()">清空</span></div>
+    <div class="s-history">${S.history.map(h=>`<div onclick="searchThis('${h}')">${h}</div>`).join('')}</div></div>`;
+}
+function searchThis(k){document.getElementById('sInput').value=k;doSearch();}
+function doSearch(){
+  const k=document.getElementById('sInput').value.trim();if(!k){toast('请输入搜索内容');return;}
+  if(!S.history.includes(k)){S.history.unshift(k);S.history=S.history.slice(0,10);}
+  document.getElementById('sContent').innerHTML=`<div class="s-section"><div style="color:#888;font-size:13px;margin-bottom:12px">「${k}」的搜索结果</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${videos.map(v=>`<div style="aspect-ratio:3/4;border-radius:8px;display:flex;flex-direction:column;justify-content:flex-end;padding:8px;background:${v.bg}"><div style="font-size:12px;font-weight:600">@${v.author}</div><div style="font-size:10px;opacity:.8">▶ ${v.likes}</div></div>`).join('')}</div></div>`;
+}
+function clearHistory(){S.history=[];renderSearch();toast('已清空');}
+
+/* ====== 评论 ====== */
+let curV=0;
+function openComments(i){
+  curV=i;const v=videos[i];const list=cmts[i]||[];
+  document.getElementById('cmtCount').textContent=v.c+' 条评论';
+  document.getElementById('cmtList').innerHTML=list.map(c=>`
+    <div class="cmt">
+      <div class="cav" style="background:${c.av}"></div>
+      <div class="cbody"><div class="cname">${c.name}</div><div class="ctext">${c.text}</div><div class="cmeta"><span>${c.time}</span><span class="clike" onclick="toast('点赞')">❤️ ${c.l}</span><span onclick="toast('回复')">回复</span></div></div>
+    </div>
+  `).join('');
+  document.getElementById('cmtSheet').classList.add('open');
+}
+function closeComments(){document.getElementById('cmtSheet').classList.remove('open');}
+function sendComment(){
+  const i=document.getElementById('cmtInput');const t=i.value.trim();if(!t)return;
+  if(!cmts[curV])cmts[curV]=[];
+  cmts[curV].unshift({name:S.profile.name,av:'linear-gradient(135deg,#f472b6,#a855f7)',text:t,time:'刚刚',l:0});
+  videos[curV].c++;i.value='';openComments(curV);renderFeed();
+}
+
+/* ====== 发布编辑 ====== */
+const sg=document.getElementById('stickerGrid');
+stickers.forEach(s=>{const d=document.createElement('div');d.textContent=s;d.onclick=()=>addSticker(s);sg.appendChild(d);});
+let dt=null,do_={x:0,y:0};
+function addSticker(e){
+  const l=document.getElementById('stickerLayer');
+  const el=document.createElement('div');
+  el.textContent=e;el.style.cssText='position:absolute;font-size:50px;cursor:move;user-select:none;filter:drop-shadow(0 2px 6px rgba(0,0,0,.5));pointer-events:auto;left:100px;top:250px';
+  mkDrag(el);el.ondblclick=()=>el.remove();l.appendChild(el);toast('已添加贴纸');
+}
+function mkDrag(el){el.addEventListener('pointerdown',e=>{dt=el;const r=el.getBoundingClientRect();do_.x=e.clientX-r.left;do_.y=e.clientY-r.top;el.style.zIndex=100;e.preventDefault();});}
+document.addEventListener('pointermove',e=>{
+  if(!dt)return;const p=document.getElementById('edPreview').getBoundingClientRect();
+  dt.style.left=(e.clientX-p.left-do_.x)+'px';dt.style.top=(e.clientY-p.top-do_.y)+'px';
+});
+document.addEventListener('pointerup',()=>{if(dt){dt.style.zIndex='';dt=null;}});
+let tStyle='white';
+function setTextStyle(s){tStyle=s;toast('已选样式');}
+function addText(){
+  const i=document.getElementById('textInput');const t=i.value.trim();if(!t){toast('请输入文字');return;}
+  const l=document.getElementById('stickerLayer');
+  const el=document.createElement('div');el.textContent=t;
+  let css='position:absolute;color:#fff;font-size:22px;font-weight:700;text-shadow:0 2px 6px rgba(0,0,0,.7);cursor:move;user-select:none;padding:4px 8px;pointer-events:auto;left:90px;top:240px';
+  if(tStyle==='gradient')css+=';background:linear-gradient(90deg,#fe2c55,#25f4ee);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent';
+  else if(tStyle==='yellow')css+=';color:#fde047';else if(tStyle==='red')css+=';color:#ef4444';else if(tStyle==='outline')css+=';color:#fff;-webkit-text-stroke:1px #000';
+  el.style.cssText=css;mkDrag(el);el.ondblclick=()=>el.remove();l.appendChild(el);i.value='';closePanels();toast('已添加文字');
+}
+function applyFilter(n,el){
+  document.querySelectorAll('#pn-filter div[style*="text-align"]').forEach(c=>c.style.opacity='.5');el.style.opacity='1';
+  const f={none:'',warm:'sepia(.3) saturate(1.3)',cool:'hue-rotate(200deg) saturate(1.2)',bw:'grayscale(1)',vintage:'sepia(.5) contrast(1.1)',fresh:'saturate(1.4) hue-rotate(-10deg)',cinema:'contrast(1.3) brightness(.9)',pink:'saturate(1.5) hue-rotate(340deg)'};
+  document.getElementById('previewMedia').style.filter=f[n];
+  toast('滤镜：'+el.querySelector('div:last-child').textContent);
+}
+function renderMusic(){
+  document.getElementById('musicList').innerHTML=musics.map((m,i)=>`
+    <div class="ed-mitem" onclick="selMusic(${i})">
+      <div class="mcover" style="background:${m.c}"></div>
+      <div class="minfo"><div class="mname">${m.name}</div><div class="mdesc">${m.desc}</div></div>
+      ${m.on?'<div class="mcheck">✓</div>':''}
+    </div>
+  `).join('');
+}
+renderMusic();
+function selMusic(i){musics.forEach(m=>m.on=false);musics[i].on=true;renderMusic();toast('已选择：'+musics[i].name);}
+function renderTimeline(){
+  const clips=['linear-gradient(135deg,#fbbf24,#d97706)','linear-gradient(135deg,#f59e0b,#b45309)','linear-gradient(135deg,#fb923c,#c2410c)','linear-gradient(135deg,#f97316,#9a3412)','linear-gradient(135deg,#ef4444,#7f1d1d)','linear-gradient(135deg,#fbbf24,#d97706)'];
+  document.getElementById('edTimeline').innerHTML=clips.map((c,i)=>`<div class="ed-clip ${i===0?'active':''}" style="background:${c}" onclick="selClip(this)"></div>`).join('');
+}
+function selClip(el){document.querySelectorAll('.ed-clip').forEach(c=>c.classList.remove('active'));el.classList.add('active');}
+renderTimeline();
+function openPanel(n){closePanels();document.getElementById('pn-'+n).classList.add('open');}
+function closePanels(){document.querySelectorAll('.ed-panel').forEach(p=>p.classList.remove('open'));}
+
+/* ====== 退出 ====== */
+function logout(){toast('已退出登录');setTimeout(()=>go('login'),400);}
+
+/* ====== 初始化 ====== */
+function init(){
+  renderFeed();
+  const c=document.getElementById('clock');
+  const up=()=>{const d=new Date();c.textContent=d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');};
+  up();setInterval(up,30000);
+  document.getElementById('phone').addEventListener('click',e=>{
+    const s=document.getElementById('cmtSheet');
+    if(s.classList.contains('open')&&!s.contains(e.target)&&!e.target.closest('.sa')&&!e.target.closest('.sheet'))closeComments();
+  });
+}
+init();
+</script>
+</body>
+</html>
