@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>抖音 · 记录美好生活</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;font-family:'Noto Sans SC',sans-serif}
+html,body{height:100%;background:#0a0a0a;overflow:hidden}
+body{display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 30% 20%,#1a1a2e 0%,#0a0a0a 60%)}
+
+/* ============ 手机外框 ============ */
+.phone{position:relative;width:390px;height:844px;background:#000;border-radius:48px;box-shadow:0 40px 100px rgba(0,0,0,.6),0 0 0 12px #1a1a1a,0 0 0 14px #333;overflow:hidden}
+.notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:28px;background:#000;border-bottom-left-radius:18px;border-bottom-right-radius:18px;z-index:1000}
+.statusbar{position:absolute;top:0;left:0;right:0;height:44px;display:flex;justify-content:space-between;align-items:center;padding:0 28px;color:#fff;font-size:14px;font-weight:600;z-index:999;pointer-events:none}
+.statusbar.dark{color:#000}
+
+/* ============ 页面容器 ============ */
+.page{position:absolute;inset:0;display:none;flex-direction:column;background:#000;color:#fff;overflow:hidden}
+.page.active{display:flex;animation:fadeIn .25s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.no-scrollbar::-webkit-scrollbar{display:none}
+.no-scrollbar{scrollbar-width:none}
+
+/* ============ 底部导航 ============ */
+.tabbar{height:62px;background:#000;display:flex;align-items:center;justify-content:space-around;padding-bottom:6px;border-top:1px solid rgba(255,255,255,.06);flex-shrink:0}
+.tab-item{display:flex;flex-direction:column;align-items:center;gap:2px;color:#888;cursor:pointer;font-size:11px;transition:color .2s}
+.tab-item.active{color:#fff}
+.tab-plus{width:52px;height:34px;border-radius:10px;background:linear-gradient(90deg,#25f4ee 0%,#25f4ee 50%,#fff 50%,#fff 55%,#fe2c55 55%,#fe2c55 100%);position:relative;cursor:pointer}
+.tab-plus::before{content:'+';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#000;font-size:22px;font-weight:900}
+
+/* ============ 视频流 ============ */
+.feed{flex:1;overflow-y:scroll;scroll-snap-type:y mandatory;scroll-behavior:smooth}
+.feed::-webkit-scrollbar{display:none}
+.vcard{height:100%;scroll-snap-align:start;position:relative;display:flex;align-items:flex-end}
+.vbg{position:absolute;inset:0;background-size:cover;background-position:center}
+.voverlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.35) 0%,transparent 25%,transparent 55%,rgba(0,0,0,.75) 100%)}
+
+/* 右侧操作栏 */
+.side-actions{position:absolute;right:3px;bottom:90px;display:flex;flex-direction:column;align-items:center;gap:18px;z-index:10}
+.sa{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;transition:transform .12s}
+.sa:active{transform:scale(.82)}
+.sa .ic{font-size:30px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.5))}
+.sa .num{font-size:12px;font-weight:500;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.avatar-add{position:relative}
+.avatar-add .plus{position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);width:20px;height:20px;background:#fe2c55;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700;border:2px solid #000}
+.disc{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#333,#111);border:3px solid #222;display:flex;align-items:center;justify-content:center;animation:spin 6s linear infinite}
+.disc .inner{width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,#fe2c55,#25f4ee)}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ============ 顶部标签 ============ */
+.toptabs{display:flex;align-items:center;justify-content:center;gap:22px;height:42px;padding-top:6px}
+.ttab{color:rgba(255,255,255,.55);font-size:17px;font-weight:500;cursor:pointer;position:relative}
+.ttab.active{color:#fff;font-weight:700}
+.ttab.active::after{content:'';position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);width:16px;height:3px;background:#fff;border-radius:2px}
+
+/* ============ 评论抽屉 ============ */
+.sheet{position:absolute;bottom:0;left:0;right:0;max-height:70%;background:#1a1a1a;border-radius:16px 16px 0 0;transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);z-index:500;display:flex;flex-direction:column}
+.sheet.open{transform:translateY(0)}
+.handle{width:36px;height:4px;background:#555;border-radius:2px;margin:8px auto;flex-shrink:0;cursor:pointer}
+
+/* ============ 编辑面板 ============ */
+.panel{position:absolute;bottom:0;left:0;right:0;background:#1a1a1a;border-radius:16px 16px 0 0;transform:translateY(100%);transition:transform .3s;z-index:400;max-height:55%}
+.panel.open{transform:translateY(0)}
+
+/* ============ 通用 ============ */
+.toast{position:absolute;top:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.82);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;z-index:2000;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+.like-red{color:#fe2c55!important}
+@keyframes heartPop{0%{opacity:0;transform:translateY(20px) scale(.8)}50%{opacity:1;transform:translateY(-10px) scale(1.1)}100%{opacity:0;transform:translateY(-60px) scale(1)}}
+.heart-pop{animation:heartPop 1s ease-out forwards}
+@keyframes twinkle{0%,100%{opacity:.2;transform:scale(.8)}50%{opacity:1;transform:scale(1.4)}}
+
+/* 引导页 */
+.guide-bg{background:radial-gradient(ellipse 80% 50% at 50% 0%,rgba(255,200,120,.18) 0%,transparent 55%),linear-gradient(180deg,#1c1308 0%,#120c05 40%,#0a0603 100%)}
+.brush{font-family:'Ma Shan Zheng',cursive}
+</style>
+</head>
+<body>
+
+<div class="phone" id="phone">
+  <div class="notch"></div>
+  <div class="statusbar" id="statusbar"><span id="clock">9:41</span><span>●●● 📶 🔋</span></div>
+  <div class="toast" id="toast"></div>
+
+  <!-- ========== 引导页 ========== -->
+  <div class="page active guide-bg" id="page-guide" style="overflow:hidden">
+    <div class="absolute inset-0" style="background:radial-gradient(ellipse 60% 40% at 50% 40%,rgba(180,110,50,.1),transparent 60%)"></div>
+    <!-- 漂浮纸张 -->
+    <div class="absolute" style="top:8%;left:6%;width:80px;height:110px;background:linear-gradient(135deg,#f0e6cf,#ddd0b0);transform:rotate(-18deg);opacity:.7;box-shadow:0 8px 30px rgba(0,0,0,.4)"></div>
+    <div class="absolute" style="top:10%;right:8%;width:70px;height:100px;background:linear-gradient(135deg,#ede2c8,#d8c9a6);transform:rotate(15deg);opacity:.7;box-shadow:0 8px 30px rgba(0,0,0,.4)"></div>
+    <div class="absolute" style="bottom:12%;left:4%;width:90px;height:60px;background:linear-gradient(135deg,#f3ead5,#e0d2af);transform:rotate(-8deg);opacity:.7;box-shadow:0 8px 30px rgba(0,0,0,.4)"></div>
+
+    <div class="flex-1 flex flex-col items-center justify-center px-6 relative">
+      <div class="brush text-white text-center" style="font-size:46px;line-height:1.15;text-shadow:0 2px 12px rgba(0,0,0,.6),0 0 30px rgba(255,200,120,.25);letter-spacing:2px">
+        致每一位<br/>好好生活的人
+      </div>
+      <div class="mt-4 text-sm tracking-[6px] text-amber-100/80 flex items-center gap-3">
+        <span class="w-7 h-px bg-gradient-to-r from-transparent to-amber-200/60"></span>
+        抖音 · 生活者说
+        <span class="w-7 h-px bg-gradient-to-l from-transparent to-amber-200/60"></span>
+      </div>
+
+      <!-- 手机内纸艺场景示意 -->
+      <div class="mt-10 relative" style="width:240px;height:320px">
+        <div class="absolute inset-0 rounded-[36px]" style="background:linear-gradient(180deg,#2a1d10,#140d05);box-shadow:0 0 0 2px rgba(255,210,150,.25),0 20px 60px rgba(0,0,0,.6)"></div>
+        <div class="absolute top-6 left-1/2 -translate-x-1/2 text-[110px] brush" style="background:linear-gradient(135deg,#f5e6c8,#fff8e8 50%,#d4b88a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 6px 12px rgba(0,0,0,.5))">♪</div>
+        <div class="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-1 text-2xl">🪑🎻📷🗿🪴</div>
+      </div>
+
+      <button class="mt-10 px-12 py-3.5 rounded-full text-white font-bold text-base tracking-[4px] active:scale-95 transition" style="background:linear-gradient(135deg,#fe2c55,#ff4d6d);box-shadow:0 8px 24px rgba(254,44,85,.4),0 0 40px rgba(254,44,85,.2)" onclick="go('login')">开 始 体 验</button>
+      <div class="mt-4 text-[10px] text-white/30 tracking-wider">抖音 · 记录美好生活</div>
+    </div>
+  </div>
+
+  <!-- ========== 登录页 ========== -->
+  <div class="page" id="page-login" style="background:#000">
+    <div class="absolute top-0 left-0 right-0 h-80" style="background:radial-gradient(ellipse at 50% 0%,rgba(254,44,85,.25),transparent 70%)"></div>
+    <div class="flex-1 flex flex-col px-8 pt-28 relative">
+      <div class="text-4xl font-black mb-2" style="background:linear-gradient(135deg,#fe2c55,#25f4ee);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">抖音</div>
+      <div class="text-white/50 text-sm mb-12">记录美好生活</div>
+
+      <div class="space-y-5">
+        <div>
+          <div class="text-white/60 text-sm mb-2">手机号</div>
+          <input id="loginPhone" type="tel" placeholder="请输入手机号" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white outline-none focus:border-[#fe2c55] placeholder:text-white/30" />
+        </div>
+        <div>
+          <div class="text-white/60 text-sm mb-2">验证码</div>
+          <div class="flex gap-3">
+            <input id="loginCode" type="text" placeholder="6位验证码" class="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white outline-none focus:border-[#fe2c55] placeholder:text-white/30" />
+            <button id="codeBtn" class="px-5 rounded-xl text-sm font-semibold whitespace-nowrap" style="background:#fe2c55;color:#fff" onclick="sendCode()">获取验证码</button>
+          </div>
+        </div>
+      </div>
+
+      <button class="mt-10 py-3.5 rounded-full text-white font-bold text-base active:scale-95 transition" style="background:linear-gradient(135deg,#fe2c55,#ff4d6d)" onclick="doLogin()">登 录</button>
+      <button class="mt-4 py-3.5 rounded-full text-white/80 font-semibold text-sm border border-white/15" onclick="go('home')">游客模式浏览</button>
+
+      <div class="mt-auto pb-10 text-center">
+        <div class="flex items-center justify-center gap-6 text-3xl mb-4">
+          <span class="cursor-pointer" onclick="showToast('微信登录')">💬</span>
+          <span class="cursor-pointer" onclick="showToast('QQ登录')">🐧</span>
+          <span class="cursor-pointer" onclick="showToast('Apple登录')">🍎</span>
+        </div>
+        <div class="text-white/30 text-xs">登录即代表同意《用户协议》和《隐私政策》</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 首页 ========== -->
+  <div class="page" id="page-home">
+    <div class="feed" id="feed"></div>
+    <!-- 顶部 -->
+    <div class="absolute top-0 left-0 right-0 z-30">
+      <div class="toptabs">
+        <div class="ttab" data-ftab="follow">关注</div>
+        <div class="ttab" data-ftab="friends">朋友</div>
+        <div class="ttab active" data-ftab="recommend">推荐</div>
+      </div>
+    </div>
+    <div class="absolute top-12 right-4 z-30 text-white text-2xl" onclick="go('search')">🔍</div>
+  </div>
+
+  <!-- ========== 朋友页 ========== -->
+  <div class="page" id="page-friends">
+    <div class="pt-12 px-4 pb-3 flex items-center justify-between bg-black flex-shrink-0">
+      <div class="text-xl font-bold">朋友</div>
+      <div class="flex gap-4 text-xl"><span onclick="go('search')">🔍</span></div>
+    </div>
+    <div class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-5" id="friendsFeed"></div>
+  </div>
+
+  <!-- ========== 发布/编辑页 ========== -->
+  <div class="page" id="page-create">
+    <div class="relative flex-1 overflow-hidden" id="editPreview" style="background:linear-gradient(135deg,#8b6f47,#5c4329)">
+      <div class="absolute top-0 left-0 right-0 z-30 flex items-center justify-between p-3 pt-12">
+        <div class="w-9 h-9 rounded-full bg-black/50 flex items-center justify-center text-white cursor-pointer" onclick="go('home')">✕</div>
+        <div class="text-white font-semibold">编辑</div>
+        <div class="px-4 py-1.5 bg-[#fe2c55] rounded-full text-white text-sm font-semibold cursor-pointer" onclick="showToast('发布成功！')">下一步</div>
+      </div>
+      <!-- 预览画面 -->
+      <div class="absolute inset-0 flex items-center justify-center">
+        <div id="previewMedia" class="w-48 h-72 rounded-2xl shadow-2xl relative overflow-hidden" style="background:linear-gradient(to bottom,#fbbf24,#b45309)">
+          <div class="absolute inset-0" style="background:linear-gradient(to top,rgba(0,0,0,.4),transparent)"></div>
+          <div class="absolute bottom-3 left-3 text-white text-xs font-medium">日落 · 海岸线</div>
+        </div>
+      </div>
+      <div id="stickerLayer" class="absolute inset-0 pointer-events-none"></div>
+      <div id="textLayer" class="absolute inset-0 pointer-events-none"></div>
+      <div class="absolute bottom-2 left-3 z-20 flex items-center gap-2 text-white text-xs bg-black/40 px-3 py-1.5 rounded-full"><span class="animate-pulse">🎵</span><span id="editMusic">夏日海风 - 轻音乐</span></div>
+    </div>
+    <!-- 时间轴 -->
+    <div class="flex gap-1.5 px-3 py-2 overflow-x-auto no-scrollbar bg-[#0f0f0f] border-t border-white/5" id="timeline"></div>
+    <!-- 工具栏 -->
+    <div class="flex justify-around bg-[#1a1a1a] py-3 border-t border-white/5">
+      <div class="tool-icon" onclick="openPanel('sticker')"><div class="text-2xl">😀</div><div class="text-[11px] text-white">贴纸</div></div>
+      <div class="tool-icon" onclick="openPanel('text')"><div class="text-2xl">🔤</div><div class="text-[11px] text-white">文字</div></div>
+      <div class="tool-icon" onclick="openPanel('effect')"><div class="text-2xl">✨</div><div class="text-[11px] text-white">特效</div></div>
+      <div class="tool-icon" onclick="openPanel('filter')"><div class="text-2xl">🎨</div><div class="text-[11px] text-white">滤镜</div></div>
+      <div class="tool-icon" onclick="openPanel('music')"><div class="text-2xl">🎵</div><div class="text-[11px] text-white">音乐</div></div>
+      <div class="tool-icon" onclick="openPanel('voice')"><div class="text-2xl">🎙️</div><div class="text-[11px] text-white">配音</div></div>
+    </div>
+    <!-- 面板 -->
+    <div class="panel" id="panel-sticker">
+      <div class="handle" onclick="closePanels()"></div>
+      <div class="flex gap-2 px-4 pb-2 overflow-x-auto no-scrollbar">
+        <div class="px-3 py-1 rounded-full bg-[#fe2c55] text-xs whitespace-nowrap">推荐</div>
+        <div class="px-3 py-1 rounded-full bg-white/10 text-xs whitespace-nowrap">热门</div>
+        <div class="px-3 py-1 rounded-full bg-white/10 text-xs whitespace-nowrap">表情</div>
+        <div class="px-3 py-1 rounded-full bg-white/10 text-xs whitespace-nowrap">装饰</div>
+      </div>
+      <div class="grid grid-cols-5 gap-2 p-3 overflow-y-auto no-scrollbar" style="max-height:260px" id="stickerGrid"></div>
+    </div>
+    <div class="panel" id="panel-text">
+      <div class="handle" onclick="closePanels()"></div>
+      <div class="p-4 space-y-3">
+        <input id="textInput" type="text" placeholder="输入文字..." class="w-full bg-black/40 text-white px-4 py-3 rounded-xl outline-none text-center" />
+        <div class="flex gap-2 justify-center flex-wrap" id="textStyles">
+          <div class="w-10 h-10 rounded-lg bg-white flex items-center justify-center text-black font-bold cursor-pointer" onclick="setTextStyle('white')">A</div>
+          <div class="w-10 h-10 rounded-lg bg-gradient-to-r from-pink-500 to-purple-500 flex items-center justify-center text-white font-bold cursor-pointer" onclick="setTextStyle('gradient')">A</div>
+          <div class="w-10 h-10 rounded-lg bg-yellow-400 flex items-center justify-center text-black font-bold cursor-pointer" onclick="setTextStyle('yellow')">A</div>
+          <div class="w-10 h-10 rounded-lg border-2 border-white flex items-center justify-center text-white font-bold cursor-pointer" onclick="setTextStyle('outline')">A</div>
+          <div class="w-10 h-10 rounded-lg bg-red-500 flex items-center justify-center text-white font-bold cursor-pointer" onclick="setTextStyle('red')">A</div>
+        </div>
+        <button class="w-full py-3 bg-[#fe2c55] rounded-xl font-semibold" onclick="addText()">添加文字</button>
+      </div>
+    </div>
+    <div class="panel" id="panel-effect">
+      <div class="handle" onclick="closePanels()"></div>
+      <div class="grid grid-cols-5 gap-2 p-3">
+        <div class="aspect-square rounded-lg bg-[#2a2a2a] flex items-center justify-center text-2xl cursor-pointer" onclick="showToast('闪光特效')">✨</div>
+        <div class="aspect-square rounded-lg bg-[#2a2a2a] flex items-center justify-center text-2xl cursor-pointer" onclick="showToast('星光特效')">🌟</div>
+        <div class="aspect-square rounded-lg bg-[#2a2a2a] flex items-center justify-center text-2xl cursor-pointer" onclick="showToast('爱心特效')">💖</div>
+        <div class="aspect-square rounded-lg bg-[#2a2a2a] flex items-center justify-center text-2xl cursor-pointer" onclick="showToast('雪花特效')">❄️</div>
+        <div class="aspect-square rounded-lg bg-[#2a2a2a] flex items-center justify-center text-2xl cursor-pointer" onclick="showToast('火焰特效')">🔥</div>
+        <div class="aspect-square rounded-lg bg-[#2a2a2a] flex items-center justify-center text-2xl cursor-pointer" onclick="showToast('彩虹特效')">🌈</div>
+        <div class="aspect-square rounded-lg bg-[#2a2a2a] flex items-center justify-center text-2xl cursor-pointer" onclick="showToast('闪电特效')">⚡</div>
+        <div class="aspect-square rounded-lg bg-[#2a2a2a] flex items-center justify-center text-2xl cursor-pointer" onclick="showToast('气泡特效')">🫧</div>
+        <div class="aspect-square rounded-lg bg-[#2a2a2a] flex items-center justify-center text-2xl cursor-pointer" onclick="showToast('烟雾特效')">💨</div>
+        <div class="aspect-square rounded-lg bg-[#2a2a2a] flex items-center justify-center text-2xl cursor-pointer" onclick="showToast('光晕特效')">💫</div>
+      </div>
+    </div>
+    <div class="panel" id="panel-filter">
+      <div class="handle" onclick="closePanels()"></div>
+      <div class="grid grid-cols-4 gap-3 p-4">
+        <div class="text-center cursor-pointer" onclick="applyFilter('none',this)"><div class="aspect-square rounded-xl mb-1" style="background:linear-gradient(135deg,#fbbf24,#b45309)"></div><div class="text-xs">原图</div></div>
+        <div class="text-center cursor-pointer" onclick="applyFilter('warm',this)"><div class="aspect-square rounded-xl mb-1" style="background:linear-gradient(135deg,#fde047,#dc2626)"></div><div class="text-xs">暖阳</div></div>
+        <div class="text-center cursor-pointer" onclick="applyFilter('cool',this)"><div class="aspect-square rounded-xl mb-1" style="background:linear-gradient(135deg,#60a5fa,#4338ca)"></div><div class="text-xs">冷调</div></div>
+        <div class="text-center cursor-pointer" onclick="applyFilter('bw',this)"><div class="aspect-square rounded-xl mb-1" style="background:linear-gradient(135deg,#d1d5db,#374151)"></div><div class="text-xs">黑白</div></div>
+        <div class="text-center cursor-pointer" onclick="applyFilter('vintage',this)"><div class="aspect-square rounded-xl mb-1" style="background:linear-gradient(135deg,#fef3c7,#92400e)"></div><div class="text-xs">复古</div></div>
+        <div class="text-center cursor-pointer" onclick="applyFilter('fresh',this)"><div class="aspect-square rounded-xl mb-1" style="background:linear-gradient(135deg,#86efac,#0d9488)"></div><div class="text-xs">清新</div></div>
+        <div class="text-center cursor-pointer" onclick="applyFilter('cinema',this)"><div class="aspect-square rounded-xl mb-1" style="background:linear-gradient(135deg,#94a3b8,#1e293b)"></div><div class="text-xs">电影</div></div>
+        <div class="text-center cursor-pointer" onclick="applyFilter('pink',this)"><div class="aspect-square rounded-xl mb-1" style="background:linear-gradient(135deg,#f9a8d4,#e11d48)"></div><div class="text-xs">蜜桃</div></div>
+      </div>
+    </div>
+    <div class="panel" id="panel-music">
+      <div class="handle" onclick="closePanels()"></div>
+      <div class="px-4 py-2 space-y-1 overflow-y-auto no-scrollbar" style="max-height:280px" id="musicList"></div>
+    </div>
+    <div class="panel" id="panel-voice">
+      <div class="handle" onclick="closePanels()"></div>
+      <div class="p-8 text-center">
+        <div class="text-6xl mb-4">🎙️</div>
+        <div class="text-gray-300 mb-4">点击开始录音</div>
+        <button class="w-20 h-20 rounded-full bg-[#fe2c55] flex items-center justify-center text-white text-3xl mx-auto active:scale-95 transition" onclick="showToast('录音中...')">●</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 消息页 ========== -->
+  <div class="page" id="page-messages">
+    <div class="pt-12 px-4 pb-3 flex items-center justify-between bg-black flex-shrink-0">
+      <div class="text-xl font-bold">消息</div>
+      <div class="flex gap-4 text-xl"><span>👥</span><span>⚙️</span></div>
+    </div>
+    <div class="flex gap-5 px-4 py-4 border-b border-white/5 flex-shrink-0">
+      <div class="flex flex-col items-center gap-1 text-xs text-gray-300 cursor-pointer" onclick="showToast('赞和收藏')"><div class="w-12 h-12 rounded-full bg-[#fe2c55]/20 flex items-center justify-center text-2xl">❤️</div>赞和收藏</div>
+      <div class="flex flex-col items-center gap-1 text-xs text-gray-300 cursor-pointer" onclick="showToast('评论')"><div class="w-12 h-12 rounded-full bg-yellow-500/20 flex items-center justify-center text-2xl">💬</div>评论</div>
+      <div class="flex flex-col items-center gap-1 text-xs text-gray-300 cursor-pointer" onclick="showToast('新粉丝')"><div class="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center text-2xl">👤</div>新粉丝</div>
+      <div class="flex flex-col items-center gap-1 text-xs text-gray-300 cursor-pointer" onclick="showToast('分享')"><div class="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center text-2xl">↗️</div>分享</div>
+    </div>
+    <div class="flex-1 overflow-y-auto no-scrollbar" id="chatList"></div>
+  </div>
+
+  <!-- ========== 我（个人主页） ========== -->
+  <div class="page" id="page-profile">
+    <div class="flex-1 overflow-y-auto no-scrollbar bg-black">
+      <div class="relative">
+        <div class="absolute top-0 left-0 right-0 h-28" style="background:linear-gradient(90deg,#7c3aed,#ec4899,#fb923c);opacity:.4"></div>
+        <div class="px-4 pt-12 pb-4 relative">
+          <div class="flex justify-between mb-4"><span class="text-xl cursor-pointer" onclick="go('settings')">☰</span><div class="flex gap-4 text-xl"><span onclick="go('search')">🔍</span></div></div>
+          <div class="flex items-center gap-4">
+            <div class="w-20 h-20 rounded-full p-[3px]" style="background:linear-gradient(135deg,#fe2c55,#25f4ee)"><div class="w-full h-full rounded-full bg-gradient-to-br from-pink-400 to-purple-500"></div></div>
+            <div>
+              <div class="text-lg font-bold" id="profileName">创意小达人</div>
+              <div class="text-xs text-gray-400 mt-0.5">抖音号: creator_2026</div>
+              <div class="flex gap-3 mt-2 text-xs text-gray-300"><span>🔗 分享主页</span></div>
+            </div>
+          </div>
+          <div class="mt-3 text-sm text-gray-300" id="profileBio">🎬 记录生活美好瞬间<br/>📍 北京 · 合作V: creator2026</div>
+          <div class="flex gap-8 mt-4">
+            <div><div class="text-lg font-bold">128</div><div class="text-xs text-gray-400">关注</div></div>
+            <div><div class="text-lg font-bold">12.6w</div><div class="text-xs text-gray-400">粉丝</div></div>
+            <div><div class="text-lg font-bold">89.2w</div><div class="text-xs text-gray-400">获赞</div></div>
+          </div>
+          <div class="flex gap-2 mt-4">
+            <button class="flex-1 py-2 bg-[#fe2c55] rounded-md text-sm font-semibold" onclick="go('editprofile')">编辑资料</button>
+            <button class="flex-1 py-2 bg-white/10 rounded-md text-sm font-semibold" onclick="showToast('分享成功')">分享主页</button>
+          </div>
+        </div>
+      </div>
+      <div class="flex border-b border-white/10 sticky top-0 bg-black z-10">
+        <div class="flex-1 py-3 text-center text-sm border-b-2 border-white">🎵 作品 <span class="text-gray-400">9</span></div>
+        <div class="flex-1 py-3 text-center text-sm text-gray-500">❤️ 喜欢</div>
+        <div class="flex-1 py-3 text-center text-sm text-gray-500">⭐ 收藏</div>
+      </div>
+      <div class="grid grid-cols-3 gap-0.5 p-0.5" id="profileGrid"></div>
+    </div>
+  </div>
+
+  <!-- ========== 搜索页 ========== -->
+  <div class="page" id="page-search">
+    <div class="pt-12 px-4 pb-3 bg-black flex items-center gap-3 flex-shrink-0">
+      <span class="text-xl cursor-pointer" onclick="go('home')">←</span>
+      <div class="flex-1 bg-white/10 rounded-full px-4 py-2 flex items-center gap-2">
+        <span>🔍</span>
+        <input id="searchInput" type="text" placeholder="搜索你感兴趣的内容" class="bg-transparent outline-none text-sm flex-1 placeholder:text-gray-400 text-white" onkeydown="if(event.key==='Enter')doSearch()" />
+      </div>
+    </div>
+    <div class="flex-1 overflow-y-auto no-scrollbar px-4" id="searchContent">
+      <div class="mt-4">
+        <div class="flex items-center justify-between mb-3"><span class="font-bold">🔥 抖音热榜</span><span class="text-xs text-gray-400">查看全部 ›</span></div>
+        <div class="space-y-3" id="hotList"></div>
+      </div>
+      <div class="mt-6">
+        <div class="flex items-center justify-between mb-3"><span class="font-bold">🕐 搜索历史</span><span class="text-xs text-gray-400 cursor-pointer" onclick="clearHistory()">清空</span></div>
+        <div class="flex flex-wrap gap-2" id="historyList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 编辑资料 ========== -->
+  <div class="page" id="page-editprofile">
+    <div class="pt-12 px-4 pb-3 flex items-center justify-between bg-black flex-shrink-0">
+      <span class="text-xl cursor-pointer" onclick="go('profile')">←</span>
+      <div class="font-bold">编辑资料</div>
+      <span class="text-sm text-[#fe2c55] cursor-pointer" onclick="saveProfile()">保存</span>
+    </div>
+    <div class="flex-1 overflow-y-auto no-scrollbar px-4 py-6 space-y-5">
+      <div class="flex items-center justify-between">
+        <span class="text-gray-400">头像</span>
+        <div class="w-16 h-16 rounded-full bg-gradient-to-br from-pink-400 to-purple-500"></div>
+      </div>
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <span class="text-gray-400 w-20">昵称</span>
+        <input id="epName" class="flex-1 bg-transparent outline-none text-right" />
+      </div>
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <span class="text-gray-400 w-20">抖音号</span>
+        <input id="epId" class="flex-1 bg-transparent outline-none text-right" />
+      </div>
+      <div class="border-b border-white/10 pb-3">
+        <div class="text-gray-400 mb-2">简介</div>
+        <textarea id="epBio" class="w-full bg-transparent outline-none resize-none text-sm" rows="3"></textarea>
+      </div>
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <span class="text-gray-400">性别</span>
+        <select id="epGender" class="bg-transparent outline-none"><option>男</option><option>女</option><option>保密</option></select>
+      </div>
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <span class="text-gray-400">生日</span>
+        <input id="epBirthday" type="date" class="bg-transparent outline-none text-right" />
+      </div>
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <span class="text-gray-400">地区</span>
+        <input id="epRegion" class="bg-transparent outline-none text-right" placeholder="北京" />
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 设置 ========== -->
+  <div class="page" id="page-settings">
+    <div class="pt-12 px-4 pb-3 flex items-center gap-3 bg-black flex-shrink-0">
+      <span class="text-xl cursor-pointer" onclick="go('profile')">←</span>
+      <div class="font-bold">设置</div>
+    </div>
+    <div class="flex-1 overflow-y-auto no-scrollbar">
+      <div class="px-4 py-2 text-xs text-gray-500">账号</div>
+      <div class="bg-black divide-y divide-white/5">
+        <div class="flex items-center justify-between px-4 py-3.5 cursor-pointer" onclick="showToast('账号管理')"><span>账号与安全</span><span class="text-gray-500">›</span></div>
+        <div class="flex items-center justify-between px-4 py-3.5 cursor-pointer" onclick="showToast('隐私设置')"><span>隐私设置</span><span class="text-gray-500">›</span></div>
+        <div class="flex items-center justify-between px-4 py-3.5 cursor-pointer" onclick="showToast('青少年模式')"><span>青少年模式</span><span class="text-gray-500">未开启 ›</span></div>
+      </div>
+      <div class="px-4 py-2 text-xs text-gray-500 mt-2">通用</div>
+      <div class="bg-black divide-y divide-white/5">
+        <div class="flex items-center justify-between px-4 py-3.5 cursor-pointer" onclick="showToast('通用设置')"><span>通用设置</span><span class="text-gray-500">›</span></div>
+        <div class="flex items-center justify-between px-4 py-3.5 cursor-pointer" onclick="showToast('通知设置')"><span>通知设置</span><span class="text-gray-500">›</span></div>
+        <div class="flex items-center justify-between px-4 py-3.5 cursor-pointer" onclick="showToast('清理缓存完成')"><span>清理缓存</span><span class="text-gray-500">128.5 MB ›</span></div>
+      </div>
+      <div class="px-4 py-2 text-xs text-gray-500 mt-2">关于</div>
+      <div class="bg-black divide-y divide-white/5">
+        <div class="flex items-center justify-between px-4 py-3.5"><span>关于抖音</span><span class="text-gray-500">v21.6.0 ›</span></div>
+        <div class="flex items-center justify-between px-4 py-3.5 cursor-pointer" onclick="showToast('用户协议')"><span>用户协议</span><span class="text-gray-500">›</span></div>
+      </div>
+      <div class="p-4"><button class="w-full py-3 bg-white/5 rounded-xl text-[#fe2c55] font-semibold" onclick="logout()">退出登录</button></div>
+    </div>
+  </div>
+
+  <!-- ========== 聊天页 ========== -->
+  <div class="page" id="page-chat">
+    <div class="pt-12 px-4 pb-3 flex items-center justify-between bg-black flex-shrink-0">
+      <span class="text-xl cursor-pointer" onclick="go('messages')">←</span>
+      <div class="font-bold" id="chatTitle">小明同学</div>
+      <span class="text-xl">⋯</span>
+    </div>
+    <div class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-4 bg-[#0f0f0f]" id="chatMessages"></div>
+    <div class="p-3 border-t border-white/5 flex items-center gap-2 bg-black flex-shrink-0">
+      <input id="chatInput" type="text" placeholder="说点什么..." class="flex-1 bg-white/10 rounded-full px-4 py-2.5 text-sm outline-none text-white" onkeydown="if(event.key==='Enter')sendChat()" />
+      <div class="w-9 h-9 rounded-full bg-[#fe2c55] flex items-center justify-center text-white cursor-pointer" onclick="sendChat()">➤</div>
+    </div>
+  </div>
+
+  <!-- ========== 评论抽屉 (覆盖在首页) ========== -->
+  <div class="sheet" id="commentSheet">
+    <div class="handle" onclick="closeComments()"></div>
+    <div class="text-center text-sm font-semibold py-1 border-b border-white/5" id="commentCount">0 条评论</div>
+    <div class="flex-1 overflow-y-auto no-scrollbar px-4 py-3 space-y-4" id="commentList"></div>
+    <div class="p-3 border-t border-white/5 flex items-center gap-2">
+      <input id="commentInput" type="text" placeholder="说点什么..." class="flex-1 bg-white/10 rounded-full px-4 py-2 text-sm outline-none text-white" onkeydown="if(event.key==='Enter')sendComment()" />
+      <div class="text-xl cursor-pointer" onclick="showToast('表情')">😊</div>
+      <div class="w-9 h-9 rounded-full bg-[#fe2c55] flex items-center justify-center text-white text-sm cursor-pointer" onclick="sendComment()">发送</div>
+    </div>
+  </div>
+
+  <!-- ========== 底部导航 ========== -->
+  <div class="tabbar" id="tabbar">
+    <div class="tab-item active" data-tab="home"><span class="text-xl">🏠</span>首页</div>
+    <div class="tab-item" data-tab="friends"><span class="text-xl">👥</span>朋友</div>
+    <div class="tab-plus" onclick="go('create')"></div>
+    <div class="tab-item" data-tab="messages"><span class="text-xl">💬</span>消息</div>
+    <div class="tab-item" data-tab="profile"><span class="text-xl">👤</span>我</div>
+  </div>
+</div>
+
+<script>
+/* ============ 全局数据 ============ */
+const state = {
+  currentVideo: 0,
+  liked: new Set(),
+  favorited: new Set(),
+  followed: new Set(),
+  searchHistory: ['海边日落','美食探店','旅行vlog'],
+  profile: { name:'创意小达人', id:'creator_2026', bio:'🎬 记录生活美好瞬间\n📍 北京 · 合作V: creator2026', gender:'男', birthday:'1998-06-15', region:'北京' },
+};
+
+const videos = [
+  { id:0, author:'旅行的小鱼', avatar:'linear-gradient(135deg,#667eea,#764ba2)', bg:'linear-gradient(135deg,#667eea,#764ba2)', desc:'海边的日落永远看不腻 🌅 #旅行 #日落 #治愈系\n带你们看最美的海岸线', music:'原声 - 旅行的小鱼', likes:'12.6w', comments:3264, favorites:'8923', shares:'分享' },
+  { id:1, author:'美食探店王', avatar:'linear-gradient(135deg,#f093fb,#f5576c)', bg:'linear-gradient(135deg,#f093fb,#f5576c)', desc:'这家隐藏小店的招牌太绝了 🍜 排队2小时值不值？#美食 #探店', music:'热门BGM - 抖音热歌', likes:'8.2w', comments:1203, favorites:'4521', shares:'分享' },
+  { id:2, author:'科技前线', avatar:'linear-gradient(135deg,#4facfe,#00f2fe)', bg:'linear-gradient(135deg,#4facfe,#00f2fe)', desc:'2026年最值得买的手机TOP5 📱 你猜对了吗？#科技 #数码', music:'Future Bass - Electronic', likes:'23.1w', comments:5621, favorites:'1.2w', shares:'分享' },
+  { id:3, author:'猫咪观察员', avatar:'linear-gradient(135deg,#a8edea,#fed6e3)', bg:'linear-gradient(135deg,#a8edea,#fed6e3)', desc:'我家猫又在拆家了 😼 谁来管管 #萌宠 #猫咪', music:'可爱猫咪 - 萌系BGM', likes:'45.8w', comments:8921, favorites:'3.2w', shares:'分享' },
+  { id:4, author:'健身教练Leo', avatar:'linear-gradient(135deg,#fa709a,#fee140)', bg:'linear-gradient(135deg,#fa709a,#fee140)', desc:'7天瘦3斤的燃脂操，跟着做就对了 💪 #健身 #减肥', music:'燃脂节奏 - Workout', likes:'18.3w', comments:4521, favorites:'2.1w', shares:'分享' },
+];
+
+const friendsPosts = [
+  { name:'小明同学', avatar:'linear-gradient(135deg,#f472b6,#a855f7)', time:'2分钟前', text:'今天天气真好，出去走走 ☀️', imgs:3, likes:128, comments:23 },
+  { name:'程序员阿杰', avatar:'linear-gradient(135deg,#22d3ee,#3b82f6)', time:'1小时前', text:'新功能上线啦！欢迎大家来体验 🚀', imgs:0, likes:356, comments:45, hasCard:true },
+  { name:'旅行达人Lily', avatar:'linear-gradient(135deg,#4ade80,#14b8a6)', time:'3小时前', text:'云南真的太美了，下次还要来 🏔️', imgs:3, likes:512, comments:67 },
+  { name:'美食博主', avatar:'linear-gradient(135deg,#fbbf24,#f97316)', time:'昨天', text:'自制红烧肉教程来啦，软烂入味 🍖', imgs:2, likes:892, comments:103 },
+];
+
+const chats = [
+  { id:0, name:'抖音小助手', avatar:'linear-gradient(135deg,#f472b6,#a855f7)', msg:'欢迎使用抖音，快来创作你的第一个视频吧！', time:'下午3:20', unread:true },
+  { id:1, name:'小明同学', avatar:'linear-gradient(135deg,#22d3ee,#3b82f6)', msg:'你那个视频拍得太好看了！', time:'下午2:15', unread:false },
+  { id:2, name:'旅行达人Lily', avatar:'linear-gradient(135deg,#4ade80,#14b8a6)', msg:'下次一起去海边呀 🏖️', time:'上午11:02', unread:false },
+  { id:3, name:'美食探店王', avatar:'linear-gradient(135deg,#fbbf24,#f97316)', msg:'给你推荐一家超棒的店', time:'昨天', unread:false },
+  { id:4, name:'设计师小王', avatar:'linear-gradient(135deg,#c084fc,#7c3aed)', msg:'设计稿发你邮箱了', time:'昨天', unread:false },
+];
+
+const hotItems = [
+  { rank:1, title:'国庆假期出游攻略', tag:'热' },
+  { rank:2, title:'2026秋冬流行色', tag:'新' },
+  { rank:3, title:'AI绘画神级作品', tag:'' },
+  { rank:4, title:'深夜食堂治愈系', tag:'' },
+  { rank:5, title:'健身燃脂操跟练', tag:'热' },
+  { rank:6, title:'猫咪搞笑日常', tag:'' },
+  { rank:7, title:'城市夜景航拍', tag:'' },
+  { rank:8, title:'秋日穿搭分享', tag:'新' },
+  { rank:9, title:'手冲咖啡入门', tag:'' },
+  { rank:10, title:'周末City Walk', tag:'' },
+];
+
+const stickerList = ['😀','😍','🥰','😎','🤩','😭','😡','🥳','🤔','😴','👍','👏','🙏','💪','👀','❤️','💖','💕','🔥','⭐','🌟','✨','🌈','☀️','🌙','🍕','🍔','🍟','🎂','☕','🐶','🐱','🐰','🐼','🦊','🌸','🌹','🌻','🎵','🎮','⚽','🎨','📷','🎁','🎉'];
+const musicList = [
+  { name:'夏日海风', desc:'轻音乐 · 1.2w使用', color:'linear-gradient(135deg,#60a5fa,#a855f7)', selected:true },
+  { name:'心动节奏', desc:'流行 · 3.5w使用', color:'linear-gradient(135deg,#f472b6,#ef4444)', selected:false },
+  { name:'森林漫步', desc:'治愈 · 8921使用', color:'linear-gradient(135deg,#4ade80,#14b8a6)', selected:false },
+  { name:'阳光正好', desc:'欢快 · 2.1w使用', color:'linear-gradient(135deg,#fbbf24,#f97316)', selected:false },
+  { name:'雨夜', desc:'安静 · 1.5w使用', color:'linear-gradient(135deg,#94a3b8,#475569)', selected:false },
+];
+
+const commentsData = {
+  0: [
+    { name:'阳光女孩', avatar:'linear-gradient(135deg,#f472b6,#a855f7)', text:'这个日落也太美了吧！求位置 🙏', time:'1小时前', likes:256 },
+    { name:'旅行日记', avatar:'linear-gradient(135deg,#22d3ee,#3b82f6)', text:'已收藏，下个月就去！', time:'2小时前', likes:128 },
+    { name:'摄影师老王', avatar:'linear-gradient(135deg,#4ade80,#14b8a6)', text:'构图绝了，用的什么相机？', time:'3小时前', likes:89 },
+    { name:'风景收藏家', avatar:'linear-gradient(135deg,#fbbf24,#f97316)', text:'治愈了我一天的疲惫 🌅', time:'5小时前', likes:342 },
+  ],
+  1: [
+    { name:'吃货本货', avatar:'linear-gradient(135deg,#f472b6,#ef4444)', text:'店名！店名！店名！', time:'30分钟前', likes:512 },
+    { name:'美食雷达', avatar:'linear-gradient(135deg,#fbbf24,#f97316)', text:'看着就流口水了 🤤', time:'1小时前', likes:234 },
+  ],
+  2: [
+    { name:'数码爱好者', avatar:'linear-gradient(135deg,#22d3ee,#3b82f6)', text:'第一名我猜对了！', time:'20分钟前', likes:188 },
+    { name:'科技宅', avatar:'linear-gradient(135deg,#a855f7,#6366f1)', text:'求详细评测视频', time:'1小时前', likes:95 },
+  ],
+};
+
+const chatHistory = {
+  1: [
+    { from:'them', text:'你那个视频拍得太好看了！', time:'14:15' },
+    { from:'me', text:'谢谢啦～下次一起去拍', time:'14:20' },
+    { from:'them', text:'好啊好啊，周末有空吗', time:'14:21' },
+  ],
+  2: [
+    { from:'them', text:'下次一起去海边呀 🏖️', time:'11:02' },
+    { from:'me', text:'好呀，去哪？', time:'11:10' },
+  ],
+};
+
+/* ============ 工具 ============ */
+function fmt(n){ return n>=10000?(n/10000).toFixed(1)+'w':n; }
+let toastT;
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),1500); }
+function showToast(msg){ toast(msg); }
+
+/* ============ 路由 ============ */
+function go(page){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  const tabMap={home:0,friends:1,messages:3,profile:4};
+  const tabbar=document.getElementById('tabbar');
+  if(tabMap[page]!==undefined){
+    tabbar.style.display='flex';
+    document.querySelectorAll('.tab-item').forEach((t,i)=>t.classList.toggle('active',i===tabMap[page]));
+  } else {
+    tabbar.style.display= page==='guide'||page==='login' ? 'none' : 'none';
+  }
+  // 状态栏颜色
+  const sb=document.getElementById('statusbar');
+  sb.classList.toggle('dark', page==='guide');
+  closeComments(); closePanels();
+  if(page==='home') renderFeed();
+  if(page==='friends') renderFriends();
+  if(page==='messages') renderChats();
+  if(page==='profile') renderProfile();
+  if(page==='search') renderSearch();
+  if(page==='editprofile') loadEditProfile();
+}
+document.querySelectorAll('.tab-item').forEach(t=>t.addEventListener('click',()=>go(t.dataset.tab)));
+
+/* ============ 登录 ============ */
+let codeCount=0;
+function sendCode(){
+  const btn=document.getElementById('codeBtn');
+  const phone=document.getElementById('loginPhone').value.trim();
+  if(!/^1\d{10}$/.test(phone)){ toast('请输入正确的手机号'); return; }
+  if(codeCount>0) return;
+  codeCount=60;
+  btn.disabled=true; btn.style.opacity=.5;
+  const t=setInterval(()=>{ codeCount--; btn.textContent=codeCount+'s'; if(codeCount<=0){clearInterval(t);btn.textContent='获取验证码';btn.disabled=false;btn.style.opacity=1;} },1000);
+  toast('验证码已发送（演示：123456）');
+}
+function doLogin(){
+  const phone=document.getElementById('loginPhone').value.trim();
+  const code=document.getElementById('loginCode').value.trim();
+  if(!/^1\d{10}$/.test(phone)){ toast('请输入正确的手机号'); return; }
+  if(!code){ toast('请输入验证码'); return; }
+  toast('登录成功');
+  setTimeout(()=>go('home'),500);
+}
+
+/* ============ 首页视频流 ============ */
+function renderFeed(){
+  const feed=document.getElementById('feed');
+  feed.innerHTML=videos.map((v,i)=>`
+    <div class="vcard" data-idx="${i}">
+      <div class="vbg" style="background:${v.bg}"></div>
+      <div class="voverlay"></div>
+      <div class="absolute inset-0 flex items-center justify-center text-white/20 text-6xl pointer-events-none">▶</div>
+      <div class="side-actions">
+        <div class="sa avatar-add" onclick="toggleFollow(${i})">
+          <div class="ic" style="width:46px;height:46px;border-radius:50%;background:${v.avatar}"></div>
+          <div class="plus">+</div>
+        </div>
+        <div class="sa" onclick="toggleLike(${i},this)">
+          <div class="ic ${state.liked.has(i)?'like-red':''}">${state.liked.has(i)?'❤️':'🤍'}</div>
+          <div class="num">${fmt(v.likes)}</div>
+        </div>
+        <div class="sa" onclick="openComments(${i})">
+          <div class="ic">💬</div>
+          <div class="num">${v.comments}</div>
+        </div>
+        <div class="sa" onclick="toggleFav(${i},this)">
+          <div class="ic ${state.favorited.has(i)?'like-red':''}">${state.favorited.has(i)?'⭐':'☆'}</div>
+          <div class="num">${fmt(v.favorites)}</div>
+        </div>
+        <div class="sa" onclick="toast('分享到...')">
+          <div class="ic">↗️</div>
+          <div class="num">${v.shares}</div>
+        </div>
+        <div class="sa"><div class="disc"><div class="inner"></div></div></div>
+      </div>
+      <div class="relative z-10 p-4 pb-6">
+        <div class="font-bold text-base mb-1">@${v.author}</div>
+        <div class="text-sm text-white/90 leading-relaxed mb-2 whitespace-pre-line">${v.desc}</div>
+        <div class="flex items-center gap-2 text-sm"><span class="animate-pulse">🎵</span><span class="truncate">${v.music}</span></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleLike(i,el){
+  const icon=el.querySelector('.ic');
+  if(state.liked.has(i)){ state.liked.delete(i); icon.className='ic'; icon.textContent='🤍'; }
+  else{
+    state.liked.add(i); icon.className='ic like-red'; icon.textContent='❤️';
+    const h=document.createElement('div'); h.textContent='❤️'; h.style.cssText='position:absolute;left:50%;top:50%;font-size:36px;pointer-events:none;z-index:50'; h.className='heart-pop';
+    el.appendChild(h); setTimeout(()=>h.remove(),1000);
+  }
+}
+function toggleFav(i,el){
+  const icon=el.querySelector('.ic');
+  if(state.favorited.has(i)){ state.favorited.delete(i); icon.className='ic'; icon.textContent='☆'; }
+  else{ state.favorited.add(i); icon.className='ic like-red'; icon.textContent='⭐'; toast('已收藏'); }
+}
+function toggleFollow(i){
+  if(state.followed.has(i)){ state.followed.delete(i); toast('已取消关注'); }
+  else{ state.followed.add(i); toast('关注成功'); }
+}
+
+/* ============ 朋友页 ============ */
+function renderFriends(){
+  const el=document.getElementById('friendsFeed');
+  el.innerHTML=friendsPosts.map((p,i)=>`
+    <div class="flex gap-3">
+      <div class="w-12 h-12 rounded-full flex-shrink-0" style="background:${p.avatar}"></div>
+      <div class="flex-1 min-w-0">
+        <div class="flex justify-between"><span class="font-semibold">${p.name}</span><span class="text-xs text-gray-400">${p.time}</span></div>
+        <div class="text-sm text-gray-300 mt-1">${p.text}</div>
+        ${p.imgs?`<div class="grid grid-cols-${Math.min(p.imgs,3)} gap-1 mt-2">${Array(p.imgs).fill(0).map((_,j)=>`<div class="aspect-square rounded-lg" style="background:hsl(${i*60+j*30},70%,60%)"></div>`).join('')}</div>`:''}
+        ${p.hasCard?`<div class="mt-2 rounded-lg p-4 text-center font-semibold" style="background:linear-gradient(90deg,#7c3aed,#ec4899)">点击查看详情</div>`:''}
+        <div class="flex gap-6 mt-2 text-xs text-gray-400"><span>👍 ${p.likes}</span><span>💬 ${p.comments}</span><span class="cursor-pointer" onclick="toast('分享')">↗️</span></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ============ 消息页 ============ */
+function renderChats(){
+  const el=document.getElementById('chatList');
+  el.innerHTML=chats.map(c=>`
+    <div class="flex items-center gap-3 px-4 py-3 hover:bg-white/5 cursor-pointer" onclick="openChat(${c.id})">
+      <div class="relative w-12 h-12 rounded-full flex-shrink-0" style="background:${c.avatar}">${c.unread?'<div class="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-[#fe2c55] rounded-full border-2 border-black"></div>':''}</div>
+      <div class="flex-1 min-w-0"><div class="flex justify-between"><span class="font-semibold">${c.name}</span><span class="text-xs text-gray-400">${c.time}</span></div><div class="text-sm text-gray-400 truncate">${c.msg}</div></div>
+    </div>
+  `).join('');
+}
+
+/* ============ 聊天页 ============ */
+let currentChat=0;
+function openChat(id){
+  currentChat=id;
+  const c=chats[id];
+  document.getElementById('chatTitle').textContent=c.name;
+  const msgs=chatHistory[id]||[];
+  const el=document.getElementById('chatMessages');
+  el.innerHTML=msgs.map(m=>`
+    <div class="flex ${m.from==='me'?'justify-end':'justify-start'}">
+      ${m.from==='them'?`<div class="w-8 h-8 rounded-full mr-2 flex-shrink-0" style="background:${c.avatar}"></div>`:''}
+      <div class="${m.from==='me'?'bg-[#fe2c55] text-white':'bg-white/10'} rounded-2xl px-3.5 py-2 max-w-[70%]">${m.text}</div>
+    </div>
+  `).join('');
+  el.scrollTop=el.scrollHeight;
+  go('chat');
+}
+function sendChat(){
+  const input=document.getElementById('chatInput');
+  const txt=input.value.trim(); if(!txt) return;
+  const c=chats[currentChat];
+  if(!chatHistory[currentChat]) chatHistory[currentChat]=[];
+  chatHistory[currentChat].push({from:'me',text:txt,time:new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})});
+  input.value='';
+  openChat(currentChat);
+  // 模拟回复
+  setTimeout(()=>{
+    chatHistory[currentChat].push({from:'them',text:'收到～',time:new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})});
+    if(document.getElementById('page-chat').classList.contains('active')) openChat(currentChat);
+  },800);
+}
+
+/* ============ 个人主页 ============ */
+function renderProfile(){
+  document.getElementById('profileName').textContent=state.profile.name;
+  document.getElementById('profileBio').innerHTML=state.profile.bio.replace(/\n/g,'<br/>');
+  const grid=document.getElementById('profileGrid');
+  grid.innerHTML=videos.map(v=>`
+    <div class="aspect-[3/4] relative cursor-pointer" style="background:${v.bg}" onclick="toast('播放视频')">
+      <div class="absolute bottom-1 left-1 text-xs">▶ ${fmt(v.likes)}</div>
+    </div>
+  `).join('');
+}
+
+/* ============ 编辑资料 ============ */
+function loadEditProfile(){
+  document.getElementById('epName').value=state.profile.name;
+  document.getElementById('epId').value=state.profile.id;
+  document.getElementById('epBio').value=state.profile.bio;
+  document.getElementById('epGender').value=state.profile.gender;
+  document.getElementById('epBirthday').value=state.profile.birthday;
+  document.getElementById('epRegion').value=state.profile.region;
+}
+function saveProfile(){
+  state.profile.name=document.getElementById('epName').value||state.profile.name;
+  state.profile.id=document.getElementById('epId').value;
+  state.profile.bio=document.getElementById('epBio').value;
+  state.profile.gender=document.getElementById('epGender').value;
+  state.profile.birthday=document.getElementById('epBirthday').value;
+  state.profile.region=document.getElementById('epRegion').value;
+  toast('保存成功');
+  setTimeout(()=>go('profile'),400);
+}
+
+/* ============ 搜索 ============ */
+function renderSearch(){
+  const hot=document.getElementById('hotList');
+  hot.innerHTML=hotItems.map(h=>`
+    <div class="flex items-center gap-3 cursor-pointer" onclick="searchThis('${h.title}')">
+      <span class="w-5 text-center font-bold ${h.rank<=3?'text-[#fe2c55]':'text-gray-400'}">${h.rank}</span>
+      <span class="flex-1 text-sm">${h.title}</span>
+      ${h.tag?`<span class="text-[#fe2c55] text-xs">${h.tag}</span>`:''}
+    </div>
+  `).join('');
+  renderHistory();
+}
+function renderHistory(){
+  document.getElementById('historyList').innerHTML=state.searchHistory.map(h=>`<div class="px-3 py-1.5 rounded-full bg-white/10 text-sm cursor-pointer" onclick="searchThis('${h}')">${h}</div>`).join('');
+}
+function searchThis(k){
+  document.getElementById('searchInput').value=k;
+  doSearch();
+}
+function doSearch(){
+  const k=document.getElementById('searchInput').value.trim();
+  if(!k){ toast('请输入搜索内容'); return; }
+  if(!state.searchHistory.includes(k)){ state.searchHistory.unshift(k); state.searchHistory=state.searchHistory.slice(0,10); }
+  const el=document.getElementById('searchContent');
+  el.innerHTML=`<div class="mt-4"><div class="text-sm text-gray-400 mb-3">「${k}」的搜索结果</div><div class="grid grid-cols-2 gap-2">${videos.map(v=>`<div class="aspect-[3/4] rounded-lg flex flex-col justify-end p-2" style="background:${v.bg}"><div class="text-xs font-medium">@${v.author}</div><div class="text-[10px] text-white/70">▶ ${fmt(v.likes)}</div></div>`).join('')}</div></div>`;
+}
+function clearHistory(){ state.searchHistory=[]; renderHistory(); toast('已清空'); }
+
+/* ============ 评论 ============ */
+let currentVideoIdx=0;
+function openComments(i){
+  currentVideoIdx=i;
+  const v=videos[i];
+  const list=commentsData[i]||[];
+  document.getElementById('commentCount').textContent=v.comments+' 条评论';
+  const el=document.getElementById('commentList');
+  el.innerHTML=list.map(c=>`
+    <div class="flex gap-3">
+      <div class="w-9 h-9 rounded-full flex-shrink-0" style="background:${c.avatar}"></div>
+      <div class="flex-1"><div class="text-xs text-gray-400">${c.name}</div><div class="text-sm mt-0.5">${c.text}</div><div class="flex gap-4 mt-1 text-xs text-gray-500"><span>${c.time}</span><span onclick="toast('点赞评论')">❤️ ${c.likes}</span><span class="cursor-pointer" onclick="toast('回复')">回复</span></div></div>
+    </div>
+  `).join('');
+  document.getElementById('commentSheet').classList.add('open');
+}
+function closeComments(){ document.getElementById('commentSheet').classList.remove('open'); }
+function sendComment(){
+  const input=document.getElementById('commentInput');
+  const txt=input.value.trim(); if(!txt) return;
+  const list=commentsData[currentVideoIdx]||[];
+  list.unshift({name:state.profile.name,avatar:'linear-gradient(135deg,#f472b6,#a855f7)',text:txt,time:'刚刚',likes:0});
+  commentsData[currentVideoIdx]=list;
+  videos[currentVideoIdx].comments++;
+  input.value='';
+  openComments(currentVideoIdx);
+  renderFeed();
+}
+
+/* ============ 发布页：贴纸 ============ */
+const sg=document.getElementById('stickerGrid');
+stickerList.forEach(s=>{
+  const d=document.createElement('div'); d.className='aspect-square rounded-lg bg-[#2a2a2a] flex items-center justify-center text-2xl cursor-pointer'; d.textContent=s;
+  d.onclick=()=>addSticker(s); sg.appendChild(d);
+});
+let dragTarget=null, dragOff={x:0,y:0};
+function addSticker(emoji){
+  const layer=document.getElementById('stickerLayer');
+  const el=document.createElement('div');
+  el.textContent=emoji; el.style.cssText='position:absolute;font-size:54px;cursor:move;user-select:none;filter:drop-shadow(0 2px 6px rgba(0,0,0,.5));pointer-events:auto;left:120px;top:280px';
+  makeDrag(el); el.ondblclick=()=>el.remove();
+  layer.appendChild(el); toast('已添加贴纸');
+}
+function makeDrag(el){
+  el.addEventListener('pointerdown',e=>{dragTarget=el;const r=el.getBoundingClientRect();dragOff.x=e.clientX-r.left;dragOff.y=e.clientY-r.top;el.style.zIndex=100;e.preventDefault();});
+}
+document.addEventListener('pointermove',e=>{
+  if(!dragTarget)return;
+  const p=document.getElementById('editPreview').getBoundingClientRect();
+  dragTarget.style.left=(e.clientX-p.left-dragOff.x)+'px';
+  dragTarget.style.top=(e.clientY-p.top-dragOff.y)+'px';
+});
+document.addEventListener('pointerup',()=>{if(dragTarget){dragTarget.style.zIndex='';dragTarget=null;}});
+
+/* ============ 发布页：文字 ============ */
+let curTextStyle='white';
+function setTextStyle(s){ curTextStyle=s; toast('已选样式'); }
+function addText(){
+  const input=document.getElementById('textInput');
+  const txt=input.value.trim(); if(!txt){ toast('请输入文字'); return; }
+  const layer=document.getElementById('textLayer');
+  const el=document.createElement('div');
+  el.textContent=txt;
+  let css='position:absolute;color:#fff;font-size:22px;font-weight:700;text-shadow:0 2px 6px rgba(0,0,0,.7);cursor:move;user-select:none;padding:4px 8px;pointer-events:auto;left:110px;top:280px';
+  if(curTextStyle==='gradient') css+=';background:linear-gradient(90deg,#fe2c55,#25f4ee);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent';
+  else if(curTextStyle==='yellow') css+=';color:#fde047';
+  else if(curTextStyle==='red') css+=';color:#ef4444';
+  else if(curTextStyle==='outline') css+=';color:#fff;-webkit-text-stroke:1px #000';
+  el.style.cssText=css;
+  makeDrag(el); el.ondblclick=()=>el.remove();
+  layer.appendChild(el); input.value=''; closePanels(); toast('已添加文字');
+}
+
+/* ============ 发布页：滤镜/音乐 ============ */
+function applyFilter(name,el){
+  document.querySelectorAll('#panel-filter .text-center').forEach(c=>c.style.opacity='.5');
+  el.style.opacity='1';
+  const f={none:'',warm:'sepia(.3) saturate(1.3)',cool:'hue-rotate(200deg) saturate(1.2)',bw:'grayscale(1)',vintage:'sepia(.5) contrast(1.1)',fresh:'saturate(1.4) hue-rotate(-10deg)',cinema:'contrast(1.3) brightness(.9)',pink:'saturate(1.5) hue-rotate(340deg)'};
+  document.getElementById('previewMedia').style.filter=f[name];
+  toast('滤镜：'+el.querySelector('div:last-child').textContent);
+}
+function renderMusic(){
+  document.getElementById('musicList').innerHTML=musicList.map((m,i)=>`
+    <div class="flex items-center gap-3 p-2 rounded-xl cursor-pointer hover:bg-white/5" onclick="selectMusic(${i})">
+      <div class="w-10 h-10 rounded-lg" style="background:${m.color}"></div>
+      <div class="flex-1"><div class="text-sm">${m.name}</div><div class="text-xs text-gray-400">${m.desc}</div></div>
+      ${m.selected?'<div class="text-[#fe2c55]">✓</div>':''}
+    </div>
+  `).join('');
+}
+renderMusic();
+function selectMusic(i){
+  musicList.forEach(m=>m.selected=false);
+  musicList[i].selected=true;
+  document.getElementById('editMusic').textContent=musicList[i].name+' - '+musicList[i].desc.split('·')[0].trim();
+  renderMusic(); toast('已选择：'+musicList[i].name);
+}
+
+/* ============ 时间轴 ============ */
+function renderTimeline(){
+  const tl=document.getElementById('timeline');
+  const clips=['linear-gradient(135deg,#fbbf24,#d97706)','linear-gradient(135deg,#f59e0b,#b45309)','linear-gradient(135deg,#fb923c,#c2410c)','linear-gradient(135deg,#f97316,#9a3412)','linear-gradient(135deg,#ef4444,#7f1d1d)','linear-gradient(135deg,#fbbf24,#d97706)'];
+  tl.innerHTML=clips.map((c,i)=>`<div class="timeline-clip ${i===0?'active':''}" style="min-width:50px;height:56px;border-radius:6px;background:${c};border:2px solid ${i===0?'#fe2c55':'transparent'};cursor:pointer" onclick="selectClip(this)"></div>`).join('');
+}
+function selectClip(el){ document.querySelectorAll('.timeline-clip').forEach(c=>c.style.borderColor='transparent'); el.style.borderColor='#fe2c55'; }
+renderTimeline();
+
+/* ============ 面板控制 ============ */
+function openPanel(n){ closePanels(); document.getElementById('panel-'+n).classList.add('open'); }
+function closePanels(){ document.querySelectorAll('.panel').forEach(p=>p.classList.remove('open')); }
+
+/* ============ 退出登录 ============ */
+function logout(){ toast('已退出登录'); setTimeout(()=>go('login'),500); }
+
+/* ============ 初始化 ============ */
+function init(){
+  renderFeed();
+  // 时钟
+  const c=document.getElementById('clock');
+  const up=()=>{const d=new Date();c.textContent=d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');};
+  up(); setInterval(up,30000);
+  // 顶部 feed 标签
+  document.querySelectorAll('.ttab').forEach(t=>t.addEventListener('click',()=>{
+    document.querySelectorAll('.ttab').forEach(x=>x.classList.remove('active')); t.classList.add('active');
+  }));
+  // 点击空白关闭评论
+  document.getElementById('phone').addEventListener('click',e=>{
+    const s=document.getElementById('commentSheet');
+    if(s.classList.contains('open')&&!s.contains(e.target)&&!e.target.closest('.sa')&&!e.target.closest('.sheet')) closeComments();
+  });
+}
+init();
+</script>
+</body>
+</html>
