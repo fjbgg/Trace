@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>短视频 App UI</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  * { -webkit-tap-highlight-color: transparent; font-family: 'Noto Sans SC', sans-serif; }
+  html, body { margin: 0; padding: 0; height: 100%; background: #0a0a0a; overflow: hidden; }
+  body {
+    display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(circle at 30% 20%, #1a1a2e 0%, #0a0a0a 60%);
+  }
+
+  /* Phone frame */
+  .phone {
+    position: relative;
+    width: 390px;
+    height: 844px;
+    background: #000;
+    border-radius: 48px;
+    box-shadow: 0 40px 100px rgba(0,0,0,.6), 0 0 0 12px #1a1a1a, 0 0 0 14px #333;
+    overflow: hidden;
+  }
+  .notch {
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 120px; height: 28px; background: #000;
+    border-bottom-left-radius: 18px; border-bottom-right-radius: 18px;
+    z-index: 100;
+  }
+  .status-bar {
+    position: absolute; top: 0; left: 0; right: 0; height: 44px;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0 28px; color: #fff; font-size: 14px; font-weight: 600;
+    z-index: 90; pointer-events: none;
+  }
+
+  /* Screen container */
+  .screen {
+    position: absolute; inset: 0;
+    display: none; flex-direction: column;
+    background: #000; color: #fff;
+    overflow: hidden;
+  }
+  .screen.active { display: flex; }
+
+  /* Scrollbars */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { scrollbar-width: none; }
+
+  /* Animations */
+  @keyframes spin-slow { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+  .animate-spin-slow { animation: spin-slow 8s linear infinite; }
+  @keyframes float-up {
+    0% { opacity: 0; transform: translateY(20px) scale(.8); }
+    50% { opacity: 1; transform: translateY(-10px) scale(1.1); }
+    100% { opacity: 0; transform: translateY(-60px) scale(1); }
+  }
+  .heart-pop { animation: float-up 1s ease-out forwards; }
+  @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+  /* Video feed */
+  .feed { flex: 1; overflow-y: scroll; scroll-snap-type: y mandatory; }
+  .feed::-webkit-scrollbar { display: none; }
+  .video-card {
+    height: 100%; scroll-snap-align: start;
+    position: relative; display: flex; align-items: flex-end;
+  }
+  .video-bg {
+    position: absolute; inset: 0; background-size: cover; background-position: center;
+  }
+  .video-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,.3) 0%, transparent 30%, transparent 60%, rgba(0,0,0,.7) 100%);
+  }
+
+  /* Action buttons */
+  .action-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    color: #fff; cursor: pointer; transition: transform .15s;
+  }
+  .action-btn:active { transform: scale(.85); }
+  .action-btn .icon {
+    width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;
+    font-size: 26px; filter: drop-shadow(0 2px 4px rgba(0,0,0,.4));
+  }
+  .action-btn .count { font-size: 12px; font-weight: 500; text-shadow: 0 1px 3px rgba(0,0,0,.6); }
+
+  /* Bottom nav */
+  .bottom-nav {
+    height: 60px; background: #000; display: flex; align-items: center; justify-content: space-around;
+    padding-bottom: 4px; border-top: 1px solid rgba(255,255,255,.06);
+  }
+  .nav-item {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    color: #888; cursor: pointer; font-size: 11px; transition: color .2s;
+  }
+  .nav-item.active { color: #fff; }
+  .nav-create {
+    width: 52px; height: 34px; border-radius: 10px;
+    background: linear-gradient(90deg, #25f4ee 0%, #25f4ee 50%, #fff 50%, #fff 55%, #fe2c55 55%, #fe2c55 100%);
+    position: relative;
+  }
+  .nav-create::before {
+    content: '+'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: #000; font-size: 22px; font-weight: 900;
+  }
+
+  /* Tabs */
+  .top-tabs {
+    display: flex; align-items: center; justify-content: center; gap: 20px;
+    padding-top: 8px; height: 44px;
+  }
+  .top-tab {
+    color: rgba(255,255,255,.6); font-size: 17px; font-weight: 500; cursor: pointer;
+    position: relative; transition: color .2s;
+  }
+  .top-tab.active { color: #fff; font-weight: 700; }
+  .top-tab.active::after {
+    content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%);
+    width: 16px; height: 3px; background: #fff; border-radius: 2px;
+  }
+
+  /* Editing screen */
+  .edit-preview {
+    flex: 1; position: relative; background: linear-gradient(135deg, #8b6f47, #5c4329);
+    overflow: hidden;
+  }
+  .edit-toolbar {
+    background: #1a1a1a; padding: 12px 8px; border-top: 1px solid rgba(255,255,255,.08);
+  }
+  .tool-icon {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    color: #fff; font-size: 11px; cursor: pointer; padding: 6px 10px;
+    border-radius: 10px; transition: background .15s;
+  }
+  .tool-icon:active { background: rgba(255,255,255,.1); }
+  .tool-icon .ic { font-size: 22px; }
+
+  .panel {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: #1a1a1a; border-radius: 16px 16px 0 0;
+    transform: translateY(100%); transition: transform .3s cubic-bezier(.4,0,.2,1);
+    z-index: 50; max-height: 60%;
+  }
+  .panel.open { transform: translateY(0); }
+  .panel-handle {
+    width: 36px; height: 4px; background: #555; border-radius: 2px;
+    margin: 8px auto;
+  }
+
+  /* Sticker grid */
+  .sticker-grid {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
+    padding: 12px; overflow-y: auto; max-height: 280px;
+  }
+  .sticker-item {
+    aspect-ratio: 1; background: #2a2a2a; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; cursor: pointer; transition: transform .15s;
+  }
+  .sticker-item:active { transform: scale(.9); }
+
+  /* Timeline */
+  .timeline {
+    display: flex; gap: 2px; padding: 8px 12px; overflow-x: auto;
+    background: #0f0f0f; border-top: 1px solid rgba(255,255,255,.06);
+  }
+  .timeline-clip {
+    min-width: 50px; height: 56px; border-radius: 6px;
+    background-size: cover; background-position: center;
+    border: 2px solid transparent; cursor: pointer;
+  }
+  .timeline-clip.active { border-color: #fe2c55; }
+
+  /* Floating sticker on preview */
+  .float-sticker {
+    position: absolute; font-size: 60px; cursor: move; user-select: none;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,.5));
+  }
+
+  /* Profile */
+  .profile-header {
+    padding: 60px 16px 16px; background: linear-gradient(180deg, #2a1f3d 0%, #000 100%);
+  }
+  .avatar-ring {
+    width: 80px; height: 80px; border-radius: 50%;
+    background: linear-gradient(135deg, #fe2c55, #25f4ee);
+    padding: 3px;
+  }
+  .stat-num { font-size: 18px; font-weight: 700; }
+  .stat-label { font-size: 12px; color: #aaa; }
+
+  /* Search */
+  .search-chip {
+    padding: 6px 14px; border-radius: 20px; background: rgba(255,255,255,.1);
+    font-size: 13px; white-space: nowrap;
+  }
+
+  /* Comments */
+  .comment-sheet {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 70%;
+    background: #1a1a1a; border-radius: 16px 16px 0 0;
+    transform: translateY(100%); transition: transform .3s;
+    z-index: 60; display: flex; flex-direction: column;
+  }
+  .comment-sheet.open { transform: translateY(0); }
+
+  /* Toast */
+  .toast {
+    position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,.8); color: #fff; padding: 10px 20px; border-radius: 20px;
+    font-size: 13px; z-index: 200; opacity: 0; transition: opacity .2s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+
+  .like-red { color: #fe2c55 !important; }
+
+  /* Text overlay in editor */
+  .text-overlay {
+    position: absolute; color: #fff; font-size: 22px; font-weight: 700;
+    text-shadow: 0 2px 6px rgba(0,0,0,.7); cursor: move; user-select: none;
+    padding: 4px 8px;
+  }
+</style>
+</head>
+<body>
+
+<div class="phone" id="phone">
+  <div class="notch"></div>
+  <div class="status-bar">
+    <span id="clock">9:41</span>
+    <span>●●● 📶 🔋</span>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
+
+  <!-- ===================== HOME SCREEN ===================== -->
+  <div class="screen active" id="screen-home">
+    <div class="video-bg" style="background: linear-gradient(135deg,#1a1a2e,#16213e);"></div>
+    <!-- Top tabs -->
+    <div class="absolute top-0 left-0 right-0 z-20">
+      <div class="top-tabs">
+        <div class="top-tab" data-ftab="follow">关注</div>
+        <div class="top-tab" data-ftab="friends">朋友</div>
+        <div class="top-tab active" data-ftab="recommend">推荐</div>
+      </div>
+    </div>
+    <!-- Search icon -->
+    <div class="absolute top-12 right-4 z-20 text-white text-2xl" onclick="go('search')">🔍</div>
+
+    <!-- Feed -->
+    <div class="feed" id="feed">
+      <!-- Video 1 -->
+      <div class="video-card">
+        <div class="video-bg" style="background-image: linear-gradient(135deg,#667eea,#764ba2);"></div>
+        <div class="video-overlay"></div>
+        <!-- Play overlay -->
+        <div class="absolute inset-0 flex items-center justify-center text-white/30 text-6xl pointer-events-none" onclick="togglePlay(this)">▶</div>
+        <!-- Right actions -->
+        <div class="absolute right-3 bottom-24 flex flex-col gap-5 z-10">
+          <div class="action-btn" onclick="showToast('关注成功')">
+            <div class="icon">👤</div>
+            <div class="w-6 h-6 bg-[#fe2c55] rounded-full flex items-center justify-center text-white text-sm -mt-3">+</div>
+          </div>
+          <div class="action-btn" onclick="toggleLike(this)">
+            <div class="icon">❤️</div>
+            <div class="count">12.6w</div>
+          </div>
+          <div class="action-btn" onclick="openComments()">
+            <div class="icon">💬</div>
+            <div class="count">3264</div>
+          </div>
+          <div class="action-btn" onclick="showToast('已收藏')">
+            <div class="icon">⭐</div>
+            <div class="count">8923</div>
+          </div>
+          <div class="action-btn" onclick="showToast('分享到...')">
+            <div class="icon">↗️</div>
+            <div class="count">分享</div>
+          </div>
+          <div class="action-btn">
+            <div class="w-12 h-12 rounded-full border-2 border-white overflow-hidden animate-spin-slow" style="background: linear-gradient(135deg,#fe2c55,#25f4ee);"></div>
+          </div>
+        </div>
+        <!-- Bottom info -->
+        <div class="relative z-10 p-4 pb-4">
+          <div class="font-bold text-base mb-1">@旅行的小鱼</div>
+          <div class="text-sm text-white/90 leading-relaxed mb-2">
+            海边的日落永远看不腻 🌅 #旅行 #日落 #治愈系<br/>
+            带你们看最美的海岸线
+          </div>
+          <div class="flex items-center gap-2 text-sm">
+            <span class="animate-pulse">🎵</span>
+            <span class="truncate">原声 - 旅行的小鱼</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Video 2 -->
+      <div class="video-card">
+        <div class="video-bg" style="background-image: linear-gradient(135deg,#f093fb,#f5576c);"></div>
+        <div class="video-overlay"></div>
+        <div class="absolute inset-0 flex items-center justify-center text-white/30 text-6xl pointer-events-none">▶</div>
+        <div class="absolute right-3 bottom-24 flex flex-col gap-5 z-10">
+          <div class="action-btn"><div class="icon">👤</div><div class="w-6 h-6 bg-[#fe2c55] rounded-full flex items-center justify-center text-white text-sm -mt-3">+</div></div>
+          <div class="action-btn" onclick="toggleLike(this)"><div class="icon">❤️</div><div class="count">8.2w</div></div>
+          <div class="action-btn" onclick="openComments()"><div class="icon">💬</div><div class="count">1203</div></div>
+          <div class="action-btn"><div class="icon">⭐</div><div class="count">4521</div></div>
+          <div class="action-btn"><div class="icon">↗️</div><div class="count">分享</div></div>
+          <div class="action-btn"><div class="w-12 h-12 rounded-full border-2 border-white overflow-hidden animate-spin-slow" style="background: linear-gradient(135deg,#fe2c55,#25f4ee);"></div></div>
+        </div>
+        <div class="relative z-10 p-4 pb-4">
+          <div class="font-bold text-base mb-1">@美食探店王</div>
+          <div class="text-sm text-white/90 leading-relaxed mb-2">这家隐藏小店的招牌太绝了 🍜 排队2小时值不值？#美食 #探店</div>
+          <div class="flex items-center gap-2 text-sm"><span>🎵</span><span class="truncate">热门BGM - 抖音热歌</span></div>
+        </div>
+      </div>
+
+      <!-- Video 3 -->
+      <div class="video-card">
+        <div class="video-bg" style="background-image: linear-gradient(135deg,#4facfe,#00f2fe);"></div>
+        <div class="video-overlay"></div>
+        <div class="absolute inset-0 flex items-center justify-center text-white/30 text-6xl pointer-events-none">▶</div>
+        <div class="absolute right-3 bottom-24 flex flex-col gap-5 z-10">
+          <div class="action-btn"><div class="icon">👤</div><div class="w-6 h-6 bg-[#fe2c55] rounded-full flex items-center justify-center text-white text-sm -mt-3">+</div></div>
+          <div class="action-btn" onclick="toggleLike(this)"><div class="icon">❤️</div><div class="count">23.1w</div></div>
+          <div class="action-btn" onclick="openComments()"><div class="icon">💬</div><div class="count">5621</div></div>
+          <div class="action-btn"><div class="icon">⭐</div><div class="count">1.2w</div></div>
+          <div class="action-btn"><div class="icon">↗️</div><div class="count">分享</div></div>
+          <div class="action-btn"><div class="w-12 h-12 rounded-full border-2 border-white overflow-hidden animate-spin-slow" style="background: linear-gradient(135deg,#fe2c55,#25f4ee);"></div></div>
+        </div>
+        <div class="relative z-10 p-4 pb-4">
+          <div class="font-bold text-base mb-1">@科技前线</div>
+          <div class="text-sm text-white/90 leading-relaxed mb-2">2026年最值得买的手机TOP5 📱 你猜对了吗？#科技 #数码</div>
+          <div class="flex items-center gap-2 text-sm"><span>🎵</span><span class="truncate">Future Bass - Electronic</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== FRIENDS SCREEN ===================== -->
+  <div class="screen" id="screen-friends">
+    <div class="pt-12 px-4 pb-2 flex items-center justify-between bg-black">
+      <div class="text-xl font-bold">朋友</div>
+      <div class="text-2xl" onclick="go('search')">🔍</div>
+    </div>
+    <div class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-4">
+      <div class="flex gap-3">
+        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex-shrink-0"></div>
+        <div class="flex-1">
+          <div class="flex justify-between"><span class="font-semibold">小明同学</span><span class="text-xs text-gray-400">2分钟前</span></div>
+          <div class="text-sm text-gray-300 mt-1">今天天气真好，出去走走 ☀️</div>
+          <div class="grid grid-cols-3 gap-1 mt-2">
+            <div class="aspect-square rounded-lg bg-gradient-to-br from-yellow-300 to-orange-400"></div>
+            <div class="aspect-square rounded-lg bg-gradient-to-br from-green-300 to-teal-400"></div>
+            <div class="aspect-square rounded-lg bg-gradient-to-br from-blue-300 to-indigo-400"></div>
+          </div>
+          <div class="flex gap-6 mt-2 text-xs text-gray-400">
+            <span>👍 128</span><span>💬 23</span><span>↗️ 分享</span>
+          </div>
+        </div>
+      </div>
+      <div class="flex gap-3">
+        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex-shrink-0"></div>
+        <div class="flex-1">
+          <div class="flex justify-between"><span class="font-semibold">程序员阿杰</span><span class="text-xs text-gray-400">1小时前</span></div>
+          <div class="text-sm text-gray-300 mt-1">新功能上线啦！欢迎大家来体验 🚀</div>
+          <div class="mt-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 p-4 text-center font-semibold">点击查看详情</div>
+          <div class="flex gap-6 mt-2 text-xs text-gray-400">
+            <span>👍 356</span><span>💬 45</span><span>↗️ 分享</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== CREATE / EDIT SCREEN ===================== -->
+  <div class="screen" id="screen-create">
+    <!-- Editor preview -->
+    <div class="edit-preview" id="editPreview">
+      <!-- Top bar -->
+      <div class="absolute top-0 left-0 right-0 z-30 flex items-center justify-between p-3 pt-12">
+        <div class="w-9 h-9 rounded-full bg-black/50 flex items-center justify-center text-white" onclick="go('home')">✕</div>
+        <div class="text-white font-semibold">编辑</div>
+        <div class="px-4 py-1.5 bg-[#fe2c55] rounded-full text-white text-sm font-semibold" onclick="showToast('发布成功！')">下一步</div>
+      </div>
+      <!-- Preview content: gradient bg + sample -->
+      <div class="absolute inset-0 flex items-center justify-center">
+        <div class="w-48 h-72 rounded-2xl bg-gradient-to-b from-orange-300 to-amber-700 shadow-2xl relative overflow-hidden">
+          <div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+          <div class="absolute bottom-3 left-3 right-3 text-white text-xs">日落 · 海岸线</div>
+        </div>
+      </div>
+      <!-- Floating stickers container -->
+      <div id="stickerLayer"></div>
+      <div id="textLayer"></div>
+
+      <!-- Music indicator -->
+      <div class="absolute bottom-2 left-3 z-20 flex items-center gap-2 text-white text-xs bg-black/40 px-3 py-1.5 rounded-full">
+        <span class="animate-pulse">🎵</span><span>夏日海风 - 轻音乐</span>
+      </div>
+    </div>
+
+    <!-- Timeline -->
+    <div class="timeline no-scrollbar" id="timeline">
+      <div class="timeline-clip active" style="background: linear-gradient(135deg,#fbbf24,#d97706);"></div>
+      <div class="timeline-clip" style="background: linear-gradient(135deg,#f59e0b,#b45309);"></div>
+      <div class="timeline-clip" style="background: linear-gradient(135deg,#fb923c,#c2410c);"></div>
+      <div class="timeline-clip" style="background: linear-gradient(135deg,#f97316,#9a3412);"></div>
+      <div class="timeline-clip" style="background: linear-gradient(135deg,#ef4444,#7f1d1d);"></div>
+      <div class="timeline-clip" style="background: linear-gradient(135deg,#fbbf24,#d97706);"></div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="edit-toolbar flex justify-around">
+      <div class="tool-icon" onclick="openPanel('sticker')"><div class="ic">😀</div>贴纸</div>
+      <div class="tool-icon" onclick="openPanel('text')"><div class="ic">🔤</div>文字</div>
+      <div class="tool-icon" onclick="openPanel('effect')"><div class="ic">✨</div>特效</div>
+      <div class="tool-icon" onclick="openPanel('filter')"><div class="ic">🎨</div>滤镜</div>
+      <div class="tool-icon" onclick="openPanel('music')"><div class="ic">🎵</div>音乐</div>
+      <div class="tool-icon" onclick="openPanel('voice')"><div class="ic">🎙️</div>配音</div>
+    </div>
+
+    <!-- Sticker Panel -->
+    <div class="panel" id="panel-sticker">
+      <div class="panel-handle" onclick="closeAllPanels()"></div>
+      <div class="flex gap-2 px-4 pb-2 overflow-x-auto no-scrollbar">
+        <div class="search-chip bg-[#fe2c55]">推荐</div>
+        <div class="search-chip">热门</div>
+        <div class="search-chip">表情</div>
+        <div class="search-chip">装饰</div>
+        <div class="search-chip">文字</div>
+      </div>
+      <div class="sticker-grid no-scrollbar" id="stickerGrid"></div>
+    </div>
+
+    <!-- Text Panel -->
+    <div class="panel" id="panel-text">
+      <div class="panel-handle" onclick="closeAllPanels()"></div>
+      <div class="p-4 space-y-3">
+        <input id="textInput" type="text" placeholder="输入文字..." class="w-full bg-black/40 text-white px-4 py-3 rounded-xl outline-none text-center" />
+        <div class="flex gap-2 justify-center flex-wrap" id="textStyles">
+          <div class="w-10 h-10 rounded-lg bg-white flex items-center justify-center text-black font-bold cursor-pointer" onclick="applyText('bold')">B</div>
+          <div class="w-10 h-10 rounded-lg bg-gradient-to-r from-pink-500 to-purple-500 flex items-center justify-center text-white font-bold cursor-pointer" onclick="applyText('gradient')">A</div>
+          <div class="w-10 h-10 rounded-lg bg-yellow-400 flex items-center justify-center text-black font-bold cursor-pointer" onclick="applyText('yellow')">A</div>
+          <div class="w-10 h-10 rounded-lg border-2 border-white flex items-center justify-center text-white font-bold cursor-pointer" onclick="applyText('outline')">A</div>
+          <div class="w-10 h-10 rounded-lg bg-red-500 flex items-center justify-center text-white font-bold cursor-pointer" onclick="applyText('red')">A</div>
+        </div>
+        <button class="w-full py-3 bg-[#fe2c55] rounded-xl font-semibold" onclick="addText()">添加文字</button>
+      </div>
+    </div>
+
+    <!-- Effect Panel -->
+    <div class="panel" id="panel-effect">
+      <div class="panel-handle" onclick="closeAllPanels()"></div>
+      <div class="sticker-grid">
+        <div class="sticker-item" onclick="showToast('闪光特效')">✨</div>
+        <div class="sticker-item" onclick="showToast('星光特效')">🌟</div>
+        <div class="sticker-item" onclick="showToast('爱心特效')">💖</div>
+        <div class="sticker-item" onclick="showToast('雪花特效')">❄️</div>
+        <div class="sticker-item" onclick="showToast('火焰特效')">🔥</div>
+        <div class="sticker-item" onclick="showToast('彩虹特效')">🌈</div>
+        <div class="sticker-item" onclick="showToast('闪电特效')">⚡</div>
+        <div class="sticker-item" onclick="showToast('烟雾特效')">💨</div>
+        <div class="sticker-item" onclick="showToast('气泡特效')">🫧</div>
+        <div class="sticker-item" onclick="showToast('星光特效')">💫</div>
+      </div>
+    </div>
+
+    <!-- Filter Panel -->
+    <div class="panel" id="panel-filter">
+      <div class="panel-handle" onclick="closeAllPanels()"></div>
+      <div class="grid grid-cols-4 gap-3 p-4">
+        <div class="text-center" onclick="applyFilter(this,'none')"><div class="aspect-square rounded-xl bg-gradient-to-br from-orange-300 to-amber-700 mb-1"></div><div class="text-xs">原图</div></div>
+        <div class="text-center" onclick="applyFilter(this,'warm')"><div class="aspect-square rounded-xl bg-gradient-to-br from-yellow-300 to-red-500 mb-1"></div><div class="text-xs">暖阳</div></div>
+        <div class="text-center" onclick="applyFilter(this,'cool')"><div class="aspect-square rounded-xl bg-gradient-to-br from-blue-300 to-indigo-600 mb-1"></div><div class="text-xs">冷调</div></div>
+        <div class="text-center" onclick="applyFilter(this,'bw')"><div class="aspect-square rounded-xl bg-gradient-to-br from-gray-300 to-gray-700 mb-1"></div><div class="text-xs">黑白</div></div>
+        <div class="text-center" onclick="applyFilter(this,'vintage')"><div class="aspect-square rounded-xl bg-gradient-to-br from-amber-200 to-yellow-800 mb-1"></div><div class="text-xs">复古</div></div>
+        <div class="text-center" onclick="applyFilter(this,'fresh')"><div class="aspect-square rounded-xl bg-gradient-to-br from-green-200 to-teal-500 mb-1"></div><div class="text-xs">清新</div></div>
+        <div class="text-center" onclick="applyFilter(this,'cinema')"><div class="aspect-square rounded-xl bg-gradient-to-br from-slate-400 to-slate-800 mb-1"></div><div class="text-xs">电影</div></div>
+        <div class="text-center" onclick="applyFilter(this,'pink')"><div class="aspect-square rounded-xl bg-gradient-to-br from-pink-300 to-rose-500 mb-1"></div><div class="text-xs">蜜桃</div></div>
+      </div>
+    </div>
+
+    <!-- Music Panel -->
+    <div class="panel" id="panel-music">
+      <div class="panel-handle" onclick="closeAllPanels()"></div>
+      <div class="px-4 py-2 space-y-2 max-h-72 overflow-y-auto no-scrollbar">
+        <div class="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 cursor-pointer" onclick="selectMusic(this)"><div class="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-400 to-purple-500"></div><div class="flex-1"><div class="text-sm">夏日海风</div><div class="text-xs text-gray-400">轻音乐 · 1.2w使用</div></div><div class="text-[#fe2c55]">✓</div></div>
+        <div class="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 cursor-pointer" onclick="selectMusic(this)"><div class="w-10 h-10 rounded-lg bg-gradient-to-br from-pink-400 to-red-500"></div><div class="flex-1"><div class="text-sm">心动节奏</div><div class="text-xs text-gray-400">流行 · 3.5w使用</div></div></div>
+        <div class="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 cursor-pointer" onclick="selectMusic(this)"><div class="w-10 h-10 rounded-lg bg-gradient-to-br from-green-400 to-teal-500"></div><div class="flex-1"><div class="text-sm">森林漫步</div><div class="text-xs text-gray-400">治愈 · 8921使用</div></div></div>
+        <div class="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 cursor-pointer" onclick="selectMusic(this)"><div class="w-10 h-10 rounded-lg bg-gradient-to-br from-yellow-400 to-orange-500"></div><div class="flex-1"><div class="text-sm">阳光正好</div><div class="text-xs text-gray-400">欢快 · 2.1w使用</div></div></div>
+      </div>
+    </div>
+
+    <!-- Voice Panel -->
+    <div class="panel" id="panel-voice">
+      <div class="panel-handle" onclick="closeAllPanels()"></div>
+      <div class="p-6 text-center">
+        <div class="text-6xl mb-4">🎙️</div>
+        <div class="text-gray-300 mb-4">点击开始录音</div>
+        <button class="w-20 h-20 rounded-full bg-[#fe2c55] flex items-center justify-center text-white text-3xl mx-auto active:scale-95 transition" onclick="showToast('录音中...')">●</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MESSAGES SCREEN ===================== -->
+  <div class="screen" id="screen-messages">
+    <div class="pt-12 px-4 pb-3 flex items-center justify-between bg-black">
+      <div class="text-xl font-bold">消息</div>
+      <div class="flex gap-4 text-xl"><span>👥</span><span>⚙️</span></div>
+    </div>
+    <!-- Quick actions -->
+    <div class="flex gap-6 px-4 py-4 border-b border-white/5">
+      <div class="flex flex-col items-center gap-1 text-xs text-gray-300"><div class="w-12 h-12 rounded-full bg-[#fe2c55]/20 flex items-center justify-center text-2xl">❤️</div>赞和收藏</div>
+      <div class="flex flex-col items-center gap-1 text-xs text-gray-300"><div class="w-12 h-12 rounded-full bg-yellow-500/20 flex items-center justify-center text-2xl">💬</div>评论</div>
+      <div class="flex flex-col items-center gap-1 text-xs text-gray-300"><div class="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center text-2xl">👤</div>新粉丝</div>
+      <div class="flex flex-col items-center gap-1 text-xs text-gray-300"><div class="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center text-2xl">↗️</div>分享</div>
+    </div>
+    <!-- Chat list -->
+    <div class="flex-1 overflow-y-auto no-scrollbar">
+      <div class="flex items-center gap-3 px-4 py-3 hover:bg-white/5 cursor-pointer">
+        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 relative"><div class="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-[#fe2c55] rounded-full border-2 border-black"></div></div>
+        <div class="flex-1 min-w-0"><div class="flex justify-between"><span class="font-semibold">抖音小助手</span><span class="text-xs text-gray-400">下午3:20</span></div><div class="text-sm text-gray-400 truncate">欢迎使用抖音，快来创作你的第一个视频吧！</div></div>
+      </div>
+      <div class="flex items-center gap-3 px-4 py-3 hover:bg-white/5 cursor-pointer">
+        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500"></div>
+        <div class="flex-1 min-w-0"><div class="flex justify-between"><span class="font-semibold">小明同学</span><span class="text-xs text-gray-400">下午2:15</span></div><div class="text-sm text-gray-400 truncate">你那个视频拍得太好看了！</div></div>
+      </div>
+      <div class="flex items-center gap-3 px-4 py-3 hover:bg-white/5 cursor-pointer">
+        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-green-400 to-teal-500"></div>
+        <div class="flex-1 min-w-0"><div class="flex justify-between"><span class="font-semibold">旅行达人</span><span class="text-xs text-gray-400">上午11:02</span></div><div class="text-sm text-gray-400 truncate">下次一起去海边呀 🏖️</div></div>
+      </div>
+      <div class="flex items-center gap-3 px-4 py-3 hover:bg-white/5 cursor-pointer">
+        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500"></div>
+        <div class="flex-1 min-w-0"><div class="flex justify-between"><span class="font-semibold">美食探店王</span><span class="text-xs text-gray-400">昨天</span></div><div class="text-sm text-gray-400 truncate">给你推荐一家超棒的店</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== PROFILE SCREEN ===================== -->
+  <div class="screen" id="screen-profile">
+    <div class="flex-1 overflow-y-auto no-scrollbar bg-black">
+      <div class="profile-header relative">
+        <!-- Cover -->
+        <div class="absolute top-0 left-0 right-0 h-32 bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400 opacity-40"></div>
+        <div class="flex justify-between pt-2 mb-4">
+          <span class="text-xl">☰</span>
+          <div class="flex gap-4 text-xl"><span>🔍</span><span>⚙️</span></div>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="avatar-ring"><div class="w-full h-full rounded-full bg-gradient-to-br from-pink-400 to-purple-500"></div></div>
+          <div>
+            <div class="text-lg font-bold">创意小达人</div>
+            <div class="text-xs text-gray-400 mt-0.5">抖音号: creator_2026</div>
+            <div class="flex gap-3 mt-2 text-xs text-gray-300"><span>🔗 分享主页</span><span>📷 扫一扫</span></div>
+          </div>
+        </div>
+        <!-- Bio -->
+        <div class="mt-3 text-sm text-gray-300">🎬 记录生活美好瞬间<br/>📍 北京 · 合作V: creator2026</div>
+        <!-- Stats -->
+        <div class="flex gap-8 mt-4">
+          <div><div class="stat-num">128</div><div class="stat-label">关注</div></div>
+          <div><div class="stat-num">12.6w</div><div class="stat-label">粉丝</div></div>
+          <div><div class="stat-num">89.2w</div><div class="stat-label">获赞</div></div>
+        </div>
+        <!-- Action buttons -->
+        <div class="flex gap-2 mt-4">
+          <button class="flex-1 py-2 bg-[#fe2c55] rounded-md text-sm font-semibold">编辑资料</button>
+          <button class="flex-1 py-2 bg-white/10 rounded-md text-sm font-semibold">分享主页</button>
+          <button class="px-3 py-2 bg-white/10 rounded-md">📤</button>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="flex border-b border-white/10 sticky top-0 bg-black z-10">
+        <div class="flex-1 py-3 text-center text-sm border-b-2 border-white">🎵</div>
+        <div class="flex-1 py-3 text-center text-sm text-gray-500">❤️</div>
+        <div class="flex-1 py-3 text-center text-sm text-gray-500">⭐</div>
+      </div>
+
+      <!-- Grid -->
+      <div class="grid grid-cols-3 gap-0.5 p-0.5">
+        <div class="aspect-[3/4] bg-gradient-to-br from-purple-500 to-pink-500 relative"><div class="absolute bottom-1 left-1 text-xs">▶ 12.6w</div></div>
+        <div class="aspect-[3/4] bg-gradient-to-br from-blue-500 to-cyan-500 relative"><div class="absolute bottom-1 left-1 text-xs">▶ 8.2w</div></div>
+        <div class="aspect-[3/4] bg-gradient-to-br from-green-500 to-teal-500 relative"><div class="absolute bottom-1 left-1 text-xs">▶ 5.1w</div></div>
+        <div class="aspect-[3/4] bg-gradient-to-br from-orange-500 to-red-500 relative"><div class="absolute bottom-1 left-1 text-xs">▶ 23.1w</div></div>
+        <div class="aspect-[3/4] bg-gradient-to-br from-yellow-500 to-orange-500 relative"><div class="absolute bottom-1 left-1 text-xs">▶ 3.2w</div></div>
+        <div class="aspect-[3/4] bg-gradient-to-br from-indigo-500 to-purple-500 relative"><div class="absolute bottom-1 left-1 text-xs">▶ 6.7w</div></div>
+        <div class="aspect-[3/4] bg-gradient-to-br from-pink-500 to-rose-500 relative"><div class="absolute bottom-1 left-1 text-xs">▶ 9.8w</div></div>
+        <div class="aspect-[3/4] bg-gradient-to-br from-teal-500 to-green-500 relative"><div class="absolute bottom-1 left-1 text-xs">▶ 4.5w</div></div>
+        <div class="aspect-[3/4] bg-gradient-to-br from-red-500 to-pink-500 relative"><div class="absolute bottom-1 left-1 text-xs">▶ 15.3w</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== SEARCH SCREEN ===================== -->
+  <div class="screen" id="screen-search">
+    <div class="pt-12 px-4 pb-3 bg-black flex items-center gap-3">
+      <span class="text-xl" onclick="go('home')">←</span>
+      <div class="flex-1 bg-white/10 rounded-full px-4 py-2 flex items-center gap-2">
+        <span>🔍</span>
+        <input type="text" placeholder="搜索你感兴趣的内容" class="bg-transparent outline-none text-sm flex-1 placeholder:text-gray-400" />
+      </div>
+    </div>
+    <div class="flex-1 overflow-y-auto no-scrollbar px-4">
+      <!-- Hot list -->
+      <div class="mt-4">
+        <div class="flex items-center justify-between mb-3">
+          <span class="font-bold text-base">🔥 抖音热榜</span>
+          <span class="text-xs text-gray-400">查看全部 ›</span>
+        </div>
+        <div class="space-y-3">
+          <div class="flex items-center gap-3"><span class="text-[#fe2c55] font-bold w-5">1</span><span class="flex-1 text-sm">国庆假期出游攻略</span><span class="text-[#fe2c55] text-xs">热</span></div>
+          <div class="flex items-center gap-3"><span class="text-[#fe2c55] font-bold w-5">2</span><span class="flex-1 text-sm">2026秋冬流行色</span><span class="text-[#fe2c55] text-xs">新</span></div>
+          <div class="flex items-center gap-3"><span class="text-orange-400 font-bold w-5">3</span><span class="flex-1 text-sm">AI绘画神级作品</span></div>
+          <div class="flex items-center gap-3"><span class="text-gray-400 font-bold w-5">4</span><span class="flex-1 text-sm">深夜食堂治愈系</span></div>
+          <div class="flex items-center gap-3"><span class="text-gray-400 font-bold w-5">5</span><span class="flex-1 text-sm">健身燃脂操跟练</span><span class="text-[#fe2c55] text-xs">热</span></div>
+          <div class="flex items-center gap-3"><span class="text-gray-400 font-bold w-5">6</span><span class="flex-1 text-sm">猫咪搞笑日常</span></div>
+          <div class="flex items-center gap-3"><span class="text-gray-400 font-bold w-5">7</span><span class="flex-1 text-sm">城市夜景航拍</span></div>
+        </div>
+      </div>
+      <!-- Search history -->
+      <div class="mt-6">
+        <div class="flex items-center justify-between mb-3">
+          <span class="font-bold text-base">🕐 搜索历史</span>
+          <span class="text-xs text-gray-400">清空</span>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <div class="search-chip">海边日落</div>
+          <div class="search-chip">美食探店</div>
+          <div class="search-chip">旅行vlog</div>
+          <div class="search-chip">猫咪</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== COMMENTS SHEET (overlay on home) ===================== -->
+  <div class="comment-sheet" id="commentSheet">
+    <div class="panel-handle"></div>
+    <div class="text-center text-sm font-semibold py-1 border-b border-white/5">3264 条评论</div>
+    <div class="flex-1 overflow-y-auto no-scrollbar px-4 py-3 space-y-4">
+      <div class="flex gap-3">
+        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex-shrink-0"></div>
+        <div class="flex-1">
+          <div class="text-xs text-gray-400">阳光女孩</div>
+          <div class="text-sm mt-0.5">这个日落也太美了吧！求位置 🙏</div>
+          <div class="flex gap-4 mt-1 text-xs text-gray-500"><span>1小时前</span><span>❤️ 256</span><span>回复</span></div>
+        </div>
+      </div>
+      <div class="flex gap-3">
+        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex-shrink-0"></div>
+        <div class="flex-1">
+          <div class="text-xs text-gray-400">旅行日记</div>
+          <div class="text-sm mt-0.5">已收藏，下个月就去！</div>
+          <div class="flex gap-4 mt-1 text-xs text-gray-500"><span>2小时前</span><span>❤️ 128</span><span>回复</span></div>
+        </div>
+      </div>
+      <div class="flex gap-3">
+        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-green-400 to-teal-500 flex-shrink-0"></div>
+        <div class="flex-1">
+          <div class="text-xs text-gray-400">摄影师老王</div>
+          <div class="text-sm mt-0.5">构图绝了，用的什么相机？</div>
+          <div class="flex gap-4 mt-1 text-xs text-gray-500"><span>3小时前</span><span>❤️ 89</span><span>回复</span></div>
+        </div>
+      </div>
+      <div class="flex gap-3">
+        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex-shrink-0"></div>
+        <div class="flex-1">
+          <div class="text-xs text-gray-400">风景收藏家</div>
+          <div class="text-sm mt-0.5">治愈了我一天的疲惫 🌅</div>
+          <div class="flex gap-4 mt-1 text-xs text-gray-500"><span>5小时前</span><span>❤️ 342</span><span>回复</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="p-3 border-t border-white/5 flex items-center gap-2">
+      <input type="text" placeholder="说点什么..." class="flex-1 bg-white/10 rounded-full px-4 py-2 text-sm outline-none" />
+      <div class="text-xl">😊</div>
+      <div class="text-xl">@</div>
+    </div>
+  </div>
+
+  <!-- ===================== BOTTOM NAV ===================== -->
+  <div class="bottom-nav" id="bottomNav">
+    <div class="nav-item active" data-screen="home"><span class="text-xl">🏠</span>首页</div>
+    <div class="nav-item" data-screen="friends"><span class="text-xl">👥</span>朋友</div>
+    <div class="nav-create" onclick="go('create')"></div>
+    <div class="nav-item" data-screen="messages"><span class="text-xl">💬</span>消息</div>
+    <div class="nav-item" data-screen="profile"><span class="text-xl">👤</span>我</div>
+  </div>
+</div>
+
+<script>
+// ---- Clock ----
+function updateClock() {
+  const d = new Date();
+  document.getElementById('clock').textContent = d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
+}
+updateClock(); setInterval(updateClock, 30000);
+
+// ---- Navigation ----
+function go(screen) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + screen).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const nav = document.querySelector(`.nav-item[data-screen="${screen}"]`);
+  if (nav) nav.classList.add('active');
+  closeAllPanels();
+  document.getElementById('commentSheet').classList.remove('open');
+  // reset feed scroll for home
+  if (screen === 'home') document.getElementById('feed').scrollTop = 0;
+}
+document.querySelectorAll('.nav-item[data-screen]').forEach(item => {
+  item.addEventListener('click', () => go(item.dataset.screen));
+});
+
+// ---- Top feed tabs ----
+document.querySelectorAll('.top-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.top-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+  });
+});
+
+// ---- Like toggle ----
+function toggleLike(el) {
+  const icon = el.querySelector('.icon');
+  if (el.classList.contains('like-red')) {
+    el.classList.remove('like-red');
+    icon.textContent = '🤍';
+  } else {
+    el.classList.add('like-red');
+    icon.textContent = '❤️';
+    // Heart pop
+    const heart = document.createElement('div');
+    heart.textContent = '❤️';
+    heart.style.cssText = 'position:absolute;left:50%;top:50%;font-size:40px;pointer-events:none;z-index:50;';
+    heart.className = 'heart-pop';
+    el.appendChild(heart);
+    setTimeout(() => heart.remove(), 1000);
+  }
+}
+
+// ---- Comments ----
+function openComments() {
+  document.getElementById('commentSheet').classList.add('open');
+}
+// Click outside to close comments
+document.getElementById('phone').addEventListener('click', (e) => {
+  const sheet = document.getElementById('commentSheet');
+  if (sheet.classList.contains('open') && !sheet.contains(e.target) && !e.target.closest('.action-btn')) {
+    sheet.classList.remove('open');
+  }
+});
+
+// ---- Toast ----
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 1500);
+}
+
+// ---- Play toggle ----
+function togglePlay(el) {
+  el.style.opacity = el.style.opacity === '0' ? '' : '0';
+}
+
+// ---- Editor panels ----
+function openPanel(name) {
+  closeAllPanels();
+  document.getElementById('panel-' + name).classList.add('open');
+}
+function closeAllPanels() {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('open'));
+}
+
+// ---- Sticker grid ----
+const stickers = ['😀','😍','🥰','😎','🤩','😭','😡','🥳','🤔','😴','👍','👏','🙏','💪','👀','❤️','💖','💕','🔥','⭐','🌟','✨','🌈','☀️','🌙','🍕','🍔','🍟','🎂','☕','🐶','🐱','🐰','🐼','🦊','🌸','🌹','🌻','🎵','🎮','⚽','🎨','📷','🎁','🎉'];
+const sg = document.getElementById('stickerGrid');
+stickers.forEach(s => {
+  const div = document.createElement('div');
+  div.className = 'sticker-item';
+  div.textContent = s;
+  div.onclick = () => addSticker(s);
+  sg.appendChild(div);
+});
+
+// ---- Draggable stickers ----
+let dragTarget = null, dragOffset = {x:0, y:0};
+function addSticker(emoji) {
+  const layer = document.getElementById('stickerLayer');
+  const el = document.createElement('div');
+  el.className = 'float-sticker';
+  el.textContent = emoji;
+  el.style.left = (100 + Math.random()*100) + 'px';
+  el.style.top = (200 + Math.random()*100) + 'px';
+  makeDraggable(el);
+  el.ondblclick = () => el.remove();
+  layer.appendChild(el);
+  showToast('已添加贴纸');
+}
+
+function makeDraggable(el) {
+  el.addEventListener('pointerdown', (e) => {
+    dragTarget = el;
+    const rect = el.getBoundingClientRect();
+    dragOffset.x = e.clientX - rect.left;
+    dragOffset.y = e.clientY - rect.top;
+    el.style.zIndex = 100;
+    e.preventDefault();
+  });
+}
+document.addEventListener('pointermove', (e) => {
+  if (!dragTarget) return;
+  const preview = document.getElementById('editPreview').getBoundingClientRect();
+  dragTarget.style.left = (e.clientX - preview.left - dragOffset.x) + 'px';
+  dragTarget.style.top = (e.clientY - preview.top - dragOffset.y) + 'px';
+});
+document.addEventListener('pointerup', () => { if (dragTarget) { dragTarget.style.zIndex = ''; dragTarget = null; } });
+
+// ---- Text overlay ----
+function applyText(style) {
+  window._textStyle = style;
+  showToast('已选择样式');
+}
+function addText() {
+  const input = document.getElementById('textInput');
+  const txt = input.value.trim();
+  if (!txt) { showToast('请输入文字'); return; }
+  const layer = document.getElementById('textLayer');
+  const el = document.createElement('div');
+  el.className = 'text-overlay';
+  el.textContent = txt;
+  const style = window._textStyle || 'bold';
+  if (style === 'gradient') el.style.cssText += 'background: linear-gradient(90deg,#fe2c55,#25f4ee);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;';
+  else if (style === 'yellow') el.style.color = '#fde047';
+  else if (style === 'red') el.style.color = '#ef4444';
+  else if (style === 'outline') { el.style.color = '#fff'; el.style.webkitTextStroke = '1px #000'; }
+  else el.style.color = '#fff';
+  el.style.left = '100px';
+  el.style.top = '250px';
+  makeDraggable(el);
+  el.ondblclick = () => el.remove();
+  layer.appendChild(el);
+  input.value = '';
+  closeAllPanels();
+  showToast('已添加文字');
+}
+
+// ---- Filters ----
+function applyFilter(el, name) {
+  document.querySelectorAll('#panel-filter .text-center').forEach(c => c.style.opacity = '0.5');
+  el.style.opacity = '1';
+  const preview = document.querySelector('.edit-preview > div:nth-child(3) > div');
+  const filters = { none:'', warm:'sepia(.3) saturate(1.3)', cool:'hue-rotate(200deg) saturate(1.2)', bw:'grayscale(1)', vintage:'sepia(.5) contrast(1.1)', fresh:'saturate(1.4) hue-rotate(-10deg)', cinema:'contrast(1.3) brightness(.9)', pink:'saturate(1.5) hue-rotate(340deg)' };
+  preview.style.filter = filters[name];
+  showToast('滤镜：' + el.querySelector('div:last-child').textContent);
+}
+
+// ---- Music select ----
+function selectMusic(el) {
+  document.querySelectorAll('#panel-music .flex').forEach(row => {
+    const check = row.querySelector('.text-\\[\\#fe2c55\\]');
+    if (check) check.remove();
+  });
+  const check = document.createElement('div');
+  check.className = 'text-[#fe2c55]';
+  check.textContent = '✓';
+  el.appendChild(check);
+  showToast('已选择音乐');
+}
+
+// ---- Timeline ----
+document.querySelectorAll('.timeline-clip').forEach(clip => {
+  clip.addEventListener('click', () => {
+    document.querySelectorAll('.timeline-clip').forEach(c => c.classList.remove('active'));
+    clip.classList.add('active');
+  });
+});
+</script>
+</body>
+</html>
